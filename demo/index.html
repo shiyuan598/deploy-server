@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Flask-SocketIO Example</title>
+        <!-- <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script> -->
+    </head>
+    <body>
+        <h4>Flask-SocketIO Example</h4>
+        <div id="log"></div>
+        <form id="message-form">
+            <input type="text" id="message-input" />
+            <input type="submit" value="Send" />
+        </form>
+        <script>
+            const socket = new WebSocket("ws://localhost:3000");
+
+            // 连接成功时触发
+            socket.onopen = () => {
+                console.log("WebSocket连接已建立");
+                socket.send("Hi, server");
+            };
+
+            // 接收消息时触发
+            socket.onmessage = (event) => {
+                const message = event.data;
+                console.log("收到消息:", message);
+            };
+
+            // 连接关闭时触发
+            socket.onclose = () => {
+                console.log("WebSocket连接已关闭");
+            };
+
+            // var socket = io.connect("ws://127.0.0.1:3000", {
+            //     transports: ["websocket"],
+            //     upgrade: true,
+            //     forceNew: true,
+            //     reconnection: false,
+            //     secure: true,
+            //     rejectUnauthorized: false,
+            //     // transportOptions: {
+            //     //     polling: {
+            //     //         extraHeaders: {
+            //     //             authorization: "Bearer " + token
+            //     //         }
+            //     //     }
+            //     // },
+            //     // path: "/socket.io",
+            //     query: {
+            //         EIO: 1,
+            //         transport: "websocket"
+            //     }
+            // });
+
+            // socket.on("connect", function () {
+            //     console.log("Connected to Flask-SocketIO");
+            // });
+
+            // socket.on("disconnect", function () {
+            //     console.log("Disconnected from Flask-SocketIO");
+            // });
+
+            // $("#message-form").submit(function (event) {
+            //     event.preventDefault();
+            //     var message = $("#message-input").val();
+
+            //     socket.emit("message", {
+            //         type: "GetPackages",
+            //         message: {
+            //             project: "HWL4_X86",
+            //             pageNo: 1,
+            //             pageSize: 4
+            //         }
+            //     });
+            //     $("#message-input").val("").focus();
+            // });
+
+            // socket.on("message", function (data) {
+            //     console.info("接收到消息：", data);
+            //     var message = data["message"];
+            //     $("#log").append("<p>" + JSON.stringify(message) + "</p>");
+            // });
+        </script>
+    </body>
+</html>
