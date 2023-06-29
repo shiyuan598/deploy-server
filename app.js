@@ -22,9 +22,11 @@ app.get("/", (req, res) => {
 const server = app.listen(3000, () => {
     console.log("HTTP server is running on port 3000");
 });
-
 // 创建WebSocket服务器
 const wss = new WebSocket.Server({ server });
+
+// 将 WebSocket 实例保存在 Express 应用程序中
+app.set('wss', wss);
 
 // 处理WebSocket连接
 wss.on("connection", (ws) => {
@@ -44,4 +46,9 @@ wss.on("connection", (ws) => {
         });
     });
     ws.send("Hello client");
+    setInterval(() => {
+        ws.send("Hello client" + Date.now());
+    }, 4000);
 });
+
+
