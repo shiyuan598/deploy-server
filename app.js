@@ -1,11 +1,14 @@
 const express = require("express");
 const WebSocket = require("ws");
+const cors = require('cors');
 
 const app = express();
 
 // 设置基本配置和中间件
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// 启用跨域请求
+app.use(cors());
 
 // 引入不同的模块
 const deployRoute = require('./route');
@@ -19,8 +22,8 @@ app.get("/", (req, res) => {
 });
 
 // 创建HTTP服务器
-const server = app.listen(3000, () => {
-    console.log("HTTP server is running on port 3000");
+const server = app.listen(3001, () => {
+    console.log("HTTP server is running on port 3001");
 });
 // 创建WebSocket服务器
 const wss = new WebSocket.Server({ server });
@@ -47,8 +50,6 @@ wss.on("connection", (ws) => {
     });
     ws.send("Hello client");
     setInterval(() => {
-        ws.send("Hello client" + Date.now());
-    }, 4000);
+        ws.send("Hello client " + Date.now());
+    }, 10000);
 });
-
-
