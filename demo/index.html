@@ -37,7 +37,7 @@
 
             const btnTest = document.getElementById("btnTest");
             btnTest.onclick = () => {
-                fetch("http://localhost:3001/deploy/projects", {
+                fetch("http://localhost:3001/deploy/packages", {
                     timeout: 5 * 1000
                 }).then(v => v.json()).then(console.info);
             };

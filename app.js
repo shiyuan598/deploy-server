@@ -51,5 +51,5 @@ wss.on("connection", (ws) => {
     ws.send("Hello client");
     setInterval(() => {
         ws.send("Hello client " + Date.now());
-    }, 10000);
+    }, 1000 * 60);
 });

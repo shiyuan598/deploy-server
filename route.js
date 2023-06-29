@@ -2,7 +2,7 @@ const axios = require("axios");
 const fs = require("fs");
 const express = require("express");
 const WebSocket = require("ws");
-const sqlUtil = require("./sqlUtil");
+const sqlUtil = require("./tools/sqlUtil");
 
 const router = express.Router();
 
@@ -19,18 +19,43 @@ router.get("/", (req, res) => {
     res.send("测试 " + Date.now());
 });
 
-router.get("/projects", (req, res) => {
-    const sql = `SELECT id, name, platform, artifacts_url, vehicles, date_format(date_add(create_time, INTERVAL 8 Hour), '%Y-%m-%d %H:%i:%S') AS create_time FROM deploy_project`;
-    sqlUtil.executeQuery(sql, [], (err, results) => {
-        console.info("projects查询结果：", err, results);
-        if (err) {
-            res.status(500).send("服务器内部错误");
-        } else {
-            res.json(results);
-        }
-    });
+// 执行sql的回调
+const sqlCallback = (err, results, response) => {
+    if (err) {
+        response.status(500).json({
+            code: 1,
+            msg: err.toString()
+        });
+    } else {
+        response.json({
+            code: 0,
+            data: results,
+            msg: "成功"
+        });
+    }
+};
+
+// route异常处理
+const routeErrorHandler = (err, response) => {
+    response &&
+    response.status(500).json({
+            code: 1,
+            msg: err.toString()
+        });
+    console.info(err);
+};
+
+// 查询所有项目
+router.get("/projects", (request, response) => {
+    try {
+        const sql = `SELECT id, name, platform, artifacts_url, vehicles, date_format(date_add(create_time, INTERVAL 8 Hour), '%Y-%m-%d %H:%i:%S') AS create_time FROM deploy_project`;
+        sqlUtil.executeQuery(sql, [], (err, results) => sqlCallback(err, results, response));
+    } catch (err) {
+        routeErrorHandler(err, response);
+    }
 });
 
+// 查询一个项目对应的包信息
 router.get("/packages", (req, res) => {
     const base = "https://artifactory.zhito.com/artifactory/api/storage";
     const url = base + "/GSL4_X86/cicd";
