@@ -26,6 +26,18 @@ const errorHandler = (response, err) => {
         });
 };
 
+// 向所有客户端发送消息
+const sendMsgToAll = (request, msg) => {
+    // 获取 WebSocket 实例
+    const wss = request.app.get("wss");
+    // 发送消息给所有连接的WebSocket客户端
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(msg);
+        }
+    });
+}
+
 // 处理特定路径的路由
 router.get("/", (req, res) => {
     res.send("测试 " + Date.now());
@@ -149,13 +161,7 @@ router.get("/group/list", async (request, response) => {
                 ORDER BY task_group.${orderField} ${orderSeq === "ascend" ? "ASC" : "DESC"}
                 LIMIT ${size} OFFSET ${(num - 1) * size}
             `;
-            const params = [
-                finishedState,
-                `%${name}%`,
-                `%${name}%`,
-                `${name}%`,
-                finishedState
-              ];
+            const params = [finishedState, `%${name}%`, `%${name}%`, `${name}%`, finishedState];
             const query = sqlUtil.execute(sql, params);
             query.then(
                 (value) => fullFilled(response, value, { current: num, pageSize: size, total }),
@@ -240,17 +246,40 @@ router.get("/task/list", async (request, response) => {
             // 查询分页的数据
             const fields = `task.id, sub_g.name AS project,sub_g.creator, task.vehicle, task.package, task.state, task_state.name AS state_name,
             date_format(date_add(task.create_time, INTERVAL 8 Hour), '%Y-%m-%d %H:%i:%S') AS create_time`;
-            const { sql, params } = getSqlAndParams(
-                fields,
-                { field: orderField, seq: orderSeq },
-                { size, num }
-            );
+            const { sql, params } = getSqlAndParams(fields, { field: orderField, seq: orderSeq }, { size, num });
             const query = sqlUtil.execute(sql, params);
             query.then(
                 (value) => fullFilled(response, value, { current: num, pageSize: size, total }),
                 (error) => errorHandler(response, error)
             );
         }
+    } catch (error) {
+        (error) => errorHandler(response, error);
+    }
+});
+
+// 取消，停止，重启升级任务
+router.post("/task/operate", (request, response) => {
+    try {
+        const opt = req.body.opt; // CANCEL, STOP, RESTART
+        const groupIds = req.body.group_ids || null;
+        const taskIds = req.body.task_ids || null;
+
+        if (opt === "CANCEL") {
+            state = 2;
+          } else if (opt === "STOP" || opt === "RESTART") {
+            state = 4;
+          } else {
+            state = 2;
+          }
+          console.info(groupIds, taskIds);
+          response.json({
+            code: 0,
+            data: "",
+            pagination,
+            msg: "成功"
+        });
+        
     } catch (error) {
         (error) => errorHandler(response, error);
     }
@@ -312,18 +341,6 @@ router.get("/download", (req, res) => {
             console.error("发生错误:", error);
         });
     res.send("下载中 " + Date.now());
-});
-
-// 使用示例
-router.get("/users", (req, res) => {
-    sqlUtil.executeQuery("select id, name, telephone, role from user where role = ?", [1], (err, results) => {
-        console.info("查询结果：", err, results);
-        if (err) {
-            res.status(500).send("服务器内部错误");
-        } else {
-            res.json(results);
-        }
-    });
 });
 
 module.exports = router;

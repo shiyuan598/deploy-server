@@ -1,12 +1,18 @@
 const express = require("express");
 const WebSocket = require("ws");
 const cors = require('cors');
+const bodyParser = require('body-parser');
 
 const app = express();
 
 // 设置基本配置和中间件
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// 解析 URL 编码的请求体
+app.use(bodyParser.urlencoded({ extended: false }));
+// 解析 JSON 请求体
+app.use(bodyParser.json());
+
 // 启用跨域请求
 app.use(cors());
 
