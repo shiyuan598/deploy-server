@@ -11,7 +11,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // 引入不同的模块
-const deployRoute = require('./route');
+const deployRoute = require('./src/route');
 
 // 注册模块路由
 app.use('/deploy', deployRoute);

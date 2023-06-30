@@ -1,15 +1,26 @@
-const mysql = require("mysql2");
+const mysql = require("mysql2/promise");
 const config = require("../config");
 
 // 创建数据库连接池
 const pool = mysql.createPool(config.database);
 
 // 封装执行查询的方法
+async function execute(sql, params) {
+    try {
+        // 执行查询操作
+        const [result] = await pool.execute(sql, params);
+        return result;
+    } catch (error) {
+        console.error("执行查询时发生错误:", error);
+        throw error;
+    }
+}
+
+// 封装执行查询的方法
 function executeQuery(sql, params, callback) {
     // 执行查询操作
     pool.execute(sql, params, (err, results) => {
         // connection.release(); // 释放连接
-
         if (err) {
             console.error("执行查询时发生错误:", err);
             callback(err, null);
@@ -38,6 +49,7 @@ function remove(table, condition, callback) {
 }
 
 module.exports = {
+    execute,
     executeQuery,
     select,
     update,
