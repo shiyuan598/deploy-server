@@ -8,16 +8,17 @@ const artifacts = require("./tools/artifacts");
 const router = express.Router();
 
 // 响应处理
-const fullFilled = (result, response) => {
+const fullFilled = (response, data, pagination) => {
     response.json({
         code: 0,
-        data: result,
+        data,
+        pagination,
         msg: "成功"
     });
 };
 
 // route异常处理
-const errorHandler = (err, response) => {
+const errorHandler = (response, err) => {
     response &&
         response.status(500).json({
             code: 1,
@@ -37,11 +38,11 @@ router.get("/projects", (request, response) => {
         date_format(date_add(create_time, INTERVAL 8 Hour), '%Y-%m-%d %H:%i:%S') AS create_time FROM deploy_project`;
         const query = sqlUtil.execute(sql, []);
         query.then(
-            (value) => fullFilled(value, response),
-            (error) => errorHandler(error, response)
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
         );
     } catch (error) {
-        errorHandler(error, response);
+        (error) => errorHandler(response, error);
     }
 });
 
@@ -56,19 +57,8 @@ router.get("/packages", (request, response) => {
             });
         }
         artifacts.getAllFiles(artifacts_url).then(
-            (result) => {
-                response.json({
-                    code: 0,
-                    data: result,
-                    msg: "成功"
-                });
-            },
-            (msg) => {
-                response.status(500).json({
-                    code: 1,
-                    msg: msg
-                });
-            }
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
         );
     } catch (error) {
         errorHandler(error, response);
@@ -86,11 +76,11 @@ router.get("/package/json", (request, response) => {
             });
         }
         artifacts.findJsonByName(project, package).then(
-            (value) => fullFilled(value, response),
-            (error) => errorHandler(error, response)
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
         );
     } catch (error) {
-        errorHandler(error, response);
+        (error) => errorHandler(response, error);
     }
 });
 
@@ -107,16 +97,16 @@ router.get("/vehicle/info", (request, response) => {
         const sql = `SELECT cur_package, local_packages, timestamp FROM deploy_vehicle_info WHERE vehicle = ?`;
         const query = sqlUtil.execute(sql, [vehicle]);
         query.then(
-            (value) => fullFilled(value, response),
-            (error) => errorHandler(error, response)
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
         );
     } catch (error) {
-        errorHandler(error, response);
+        (error) => errorHandler(response, error);
     }
 });
 
 // 查询任务
-router.get("/task/list", (request, response) => {
+router.get("/task/list", async (request, response) => {
     try {
         const {
             pageNo = 1,
@@ -128,43 +118,73 @@ router.get("/task/list", (request, response) => {
             orderField = "",
             orderSeq = ""
         } = request.query;
-
-        const sql = `
-            SELECT COUNT(task.id) AS total
-            FROM deploy_upgrade_task as task
-            LEFT JOIN (
-                SELECT task_group.id, task_group.project, project.name FROM deploy_task_group as task_group
-                    LEFT JOIN deploy_project as project ON project.id = task_group.project
-            ) AS sub_g ON task.group = sub_g.id
-            LEFT JOIN deploy_task_state as task_state ON task.state = task_state.state
-            WHERE (
-                    task.vehicle LIKE ? OR
-                    task.package LIKE ? OR
-                    sub_g.name LIKE ? OR
-                    task_state.name LIKE ? OR
-                    task.create_time LIKE ?
-                )
-            ${group_id ? "AND task.group = ?" : ""}
-            ${vehicle ? "AND task.vehicle = ?" : ""}
-            ${project_id ? "AND sub_g.project = ?" : ""}
-        `;
-        const params = [`%${name}%`, `%${name}%`, `%${name}%`, `%${name}%`, `${name}%`];
-        if (group_id) {
-            params.push(group_id);
+        // 注意查询总量时不要传递page参数
+        const getSqlAndParams = (fields, order, page) => {
+            let sql = `
+                SELECT ${fields}
+                FROM deploy_upgrade_task as task
+                LEFT JOIN (
+                    SELECT task_group.id, task_group.project, task_group.creator, project.name FROM deploy_task_group as task_group
+                        LEFT JOIN deploy_project as project ON project.id = task_group.project
+                ) AS sub_g ON task.group = sub_g.id
+                LEFT JOIN deploy_task_state as task_state ON task.state = task_state.state
+                WHERE (
+                        task.vehicle LIKE ? OR
+                        task.package LIKE ? OR
+                        sub_g.name LIKE ? OR
+                        task_state.name LIKE ? OR
+                        task.create_time LIKE ?
+                    )
+                ${group_id ? "AND task.group = ?" : ""}
+                ${vehicle ? "AND task.vehicle = ?" : ""}
+                ${project_id ? "AND sub_g.project = ?" : ""}
+            `;
+            if (order) {
+                const { field, seq } = order;
+                if (field && seq) {
+                    sql += ` order by ${field} ${seq === "ascend" ? "asc" : "desc"}`;
+                }
+            }
+            if (page) {
+                const { size = 10, num } = page;
+                if (num) {
+                    sql += ` limit ${size} offset ${(num - 1) * size}`;
+                }
+            }
+            const params = [`%${name}%`, `%${name}%`, `%${name}%`, `%${name}%`, `${name}%`];
+            if (group_id) {
+                params.push(group_id);
+            }
+            if (vehicle) {
+                params.push(vehicle);
+            }
+            if (project_id) {
+                params.push(project_id);
+            }
+            return {
+                sql,
+                params
+            };
+        };
+        const fields = "COUNT(task.id) AS total";
+        const { sql, params } = getSqlAndParams(fields);
+        const queryTotal = await sqlUtil.execute(sql, params);
+        const total = queryTotal[0].total;
+        if (!total) {
+            fullFilled(response, [], { current: pageNo, pageSize, total });
+        } else {
+            // 查询分页的数据
+            const fields = `task.id, sub_g.name as project,sub_g.creator, task.vehicle, task.package, task.state, task_state.name as state_name,
+            date_format(date_add(task.create_time, INTERVAL 8 Hour), '%Y-%m-%d %H:%i:%S') AS create_time`;
+            const { sql, params } = getSqlAndParams(fields, {field: orderField, seq: orderSeq}, {size: pageSize, num: pageNo});
+            const query = sqlUtil.execute(sql, params);
+            query.then(
+                (value) => fullFilled(response, value, { current: pageNo, pageSize, total }),
+                (error) => errorHandler(response, error)
+            );
         }
-        if (vehicle) {
-            params.push(vehicle);
-        }
-        if (project_id) {
-            params.push(project_id);
-        }
-        const query = sqlUtil.execute(sql, params);
-        query.then(
-            (value) => fullFilled(value, response),
-            (error) => errorHandler(error, response)
-        );
     } catch (error) {
-        errorHandler(error, response);
+        (error) => errorHandler(response, error);
     }
 });
 
