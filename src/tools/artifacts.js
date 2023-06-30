@@ -5,7 +5,6 @@ const { json } = require("express");
 
 const { USERNAME, PASSWORD, API_KEY, BASE_URL, BUILD_JSON, DOWNLOAD_DIR, EXTRACT_DIR } = config.artifacts;
 
-
 // 查询一个目录下的所有文件
 const getAllFiles = (path) => {
     const url = BASE_URL + "/api/storage" + path;
@@ -19,12 +18,14 @@ const getAllFiles = (path) => {
                 }
             })
             .then((response) => {
-                const files = response.data.children.map((child) => {
-                    if (child.uri.startsWith("/")) {
-                        return child.uri.slice(1);
-                    }
-                    return child.uri;
-                });
+                const files = response.data.children
+                    .map((child) => {
+                        if (child.uri.startsWith("/")) {
+                            return child.uri.slice(1);
+                        }
+                        return child.uri;
+                    })
+                    .sort((a, b) => (b > a ? 1 : -1));
                 resolve(files);
             })
             .catch((error) => {
@@ -59,8 +60,7 @@ const findJsonByName = (project, name) => {
                 reject("获取文件失败");
             });
     });
-}
-
+};
 
 module.exports = {
     getAllFiles,

@@ -105,7 +105,69 @@ router.get("/vehicle/info", (request, response) => {
     }
 });
 
-// 查询任务
+// 查询任务组
+router.get("/group/list", async (request, response) => {
+    try {
+        const { pageNo = 1, pageSize = 10, name = "", orderField = "id", orderSeq = "descend" } = request.query;
+        const num = parseInt(pageNo);
+        const size = parseInt(pageSize);
+        const sql = `
+            SELECT COUNT(DISTINCT task_group.id) AS total
+            FROM deploy_task_group as task_group
+            LEFT JOIN deploy_upgrade_task AS task ON task.group = task_group.id
+            LEFT JOIN deploy_project AS project ON project.id = task_group.project
+            WHERE task.state < ?
+            AND (project.name LIKE ?
+                OR task_group.creator LIKE ?
+                OR task_group.create_time LIKE ?)
+            HAVING COUNT(CASE WHEN task.state < ? THEN 1 ELSE NULL END) > 0
+        `;
+        // TODO:需要确定具体的状态值
+        const finishedState = 4;
+        const params = [finishedState, `%${name}%`, `%${name}%`, `${name}%`, finishedState];
+        const queryTotal = await sqlUtil.execute(sql, params);
+        const total = queryTotal[0].total;
+        if (!total) {
+            fullFilled(response, [], { current: num, pageSize: size, total });
+        } else {
+            // 查询分页的数据
+            const sql = `
+                SELECT task_group.id, project.name, task_group.creator, 
+                DATE_FORMAT(DATE_ADD(task_group.create_time, INTERVAL 8 HOUR), '%Y-%m-%d %H:%i:%S') AS create_time,
+                task_group.cur_package, task_group.vehicles, task_group.packages,
+                COUNT(CASE WHEN task.state < ? THEN 1 ELSE NULL END) AS unfinished,
+                COUNT(task.id) AS total
+                FROM deploy_task_group as task_group
+                LEFT JOIN deploy_upgrade_task AS task ON task.group = task_group.id
+                LEFT JOIN deploy_project as project ON project.id = task_group.project
+                WHERE project.name LIKE ?
+                OR task_group.creator LIKE ?
+                OR task_group.update_time LIKE ?
+                GROUP BY task_group.id, project.name, task_group.creator, task_group.create_time,
+                        task_group.cur_package, task_group.vehicles, task_group.packages
+                HAVING COUNT(CASE WHEN task.state < ? THEN 1 ELSE NULL END) > 0
+                ORDER BY task_group.${orderField} ${orderSeq === "ascend" ? "ASC" : "DESC"}
+                LIMIT ${size} OFFSET ${(num - 1) * size}
+            `;
+            const params = [
+                finishedState,
+                `%${name}%`,
+                `%${name}%`,
+                `${name}%`,
+                finishedState
+              ];
+            const query = sqlUtil.execute(sql, params);
+            query.then(
+                (value) => fullFilled(response, value, { current: num, pageSize: size, total }),
+                (error) => errorHandler(response, error)
+            );
+        }
+    } catch (error) {
+        (error) => errorHandler(response, error);
+    }
+});
+
+// 查询升级任务
 router.get("/task/list", async (request, response) => {
     try {
         const {
@@ -115,19 +177,21 @@ router.get("/task/list", async (request, response) => {
             vehicle = "",
             project_id = "",
             name = "",
-            orderField = "",
-            orderSeq = ""
+            orderField = "id",
+            orderSeq = "descend"
         } = request.query;
+        const num = parseInt(pageNo);
+        const size = parseInt(pageSize);
         // 注意查询总量时不要传递page参数
         const getSqlAndParams = (fields, order, page) => {
             let sql = `
                 SELECT ${fields}
-                FROM deploy_upgrade_task as task
+                FROM deploy_upgrade_task AS task
                 LEFT JOIN (
-                    SELECT task_group.id, task_group.project, task_group.creator, project.name FROM deploy_task_group as task_group
-                        LEFT JOIN deploy_project as project ON project.id = task_group.project
+                    SELECT task_group.id, task_group.project, task_group.creator, project.name FROM deploy_task_group AS task_group
+                        LEFT JOIN deploy_project AS project ON project.id = task_group.project
                 ) AS sub_g ON task.group = sub_g.id
-                LEFT JOIN deploy_task_state as task_state ON task.state = task_state.state
+                LEFT JOIN deploy_task_state AS task_state ON task.state = task_state.state
                 WHERE (
                         task.vehicle LIKE ? OR
                         task.package LIKE ? OR
@@ -142,13 +206,13 @@ router.get("/task/list", async (request, response) => {
             if (order) {
                 const { field, seq } = order;
                 if (field && seq) {
-                    sql += ` order by ${field} ${seq === "ascend" ? "asc" : "desc"}`;
+                    sql += ` ORDER BY task.${field} ${seq === "ascend" ? "ASC" : "DESC"}`;
                 }
             }
             if (page) {
-                const { size = 10, num } = page;
+                const { size, num } = page;
                 if (num) {
-                    sql += ` limit ${size} offset ${(num - 1) * size}`;
+                    sql += ` LIMIT ${size} OFFSET ${(num - 1) * size}`;
                 }
             }
             const params = [`%${name}%`, `%${name}%`, `%${name}%`, `%${name}%`, `${name}%`];
@@ -171,15 +235,19 @@ router.get("/task/list", async (request, response) => {
         const queryTotal = await sqlUtil.execute(sql, params);
         const total = queryTotal[0].total;
         if (!total) {
-            fullFilled(response, [], { current: pageNo, pageSize, total });
+            fullFilled(response, [], { current: num, pageSize: size, total });
         } else {
             // 查询分页的数据
-            const fields = `task.id, sub_g.name as project,sub_g.creator, task.vehicle, task.package, task.state, task_state.name as state_name,
+            const fields = `task.id, sub_g.name AS project,sub_g.creator, task.vehicle, task.package, task.state, task_state.name AS state_name,
             date_format(date_add(task.create_time, INTERVAL 8 Hour), '%Y-%m-%d %H:%i:%S') AS create_time`;
-            const { sql, params } = getSqlAndParams(fields, {field: orderField, seq: orderSeq}, {size: pageSize, num: pageNo});
+            const { sql, params } = getSqlAndParams(
+                fields,
+                { field: orderField, seq: orderSeq },
+                { size, num }
+            );
             const query = sqlUtil.execute(sql, params);
             query.then(
-                (value) => fullFilled(response, value, { current: pageNo, pageSize, total }),
+                (value) => fullFilled(response, value, { current: num, pageSize: size, total }),
                 (error) => errorHandler(response, error)
             );
         }
