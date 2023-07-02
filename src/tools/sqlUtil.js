@@ -16,6 +16,28 @@ async function execute(sql, params) {
     }
 }
 
+// 事务执行函数
+async function executeTransaction(callback) {
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+  
+      await callback(connection);
+  
+      await connection.commit();
+    } catch (error) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw error;
+    } finally {
+      if (connection) {
+        connection.release();
+      }
+    }
+  }
+
 // 封装执行查询的方法
 function executeQuery(sql, params, callback) {
     // 执行查询操作
@@ -49,6 +71,7 @@ function remove(table, condition, callback) {
 }
 
 module.exports = {
+    executeTransaction,
     execute,
     executeQuery,
     select,

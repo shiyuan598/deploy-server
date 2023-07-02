@@ -19,6 +19,7 @@ const fullFilled = (response, data, pagination) => {
 
 // route异常处理
 const errorHandler = (response, err) => {
+    console.info(6, err);
     response &&
         response.status(500).json({
             code: 1,
@@ -36,7 +37,7 @@ const sendMsgToAll = (request, msg) => {
             client.send(msg);
         }
     });
-}
+};
 
 // 处理特定路径的路由
 router.get("/", (req, res) => {
@@ -54,7 +55,7 @@ router.get("/projects", (request, response) => {
             (error) => errorHandler(response, error)
         );
     } catch (error) {
-        (error) => errorHandler(response, error);
+        errorHandler(response, error);
     }
 });
 
@@ -92,7 +93,7 @@ router.get("/package/json", (request, response) => {
             (error) => errorHandler(response, error)
         );
     } catch (error) {
-        (error) => errorHandler(response, error);
+        errorHandler(response, error);
     }
 });
 
@@ -113,7 +114,7 @@ router.get("/vehicle/info", (request, response) => {
             (error) => errorHandler(response, error)
         );
     } catch (error) {
-        (error) => errorHandler(response, error);
+        errorHandler(response, error);
     }
 });
 
@@ -169,7 +170,7 @@ router.get("/group/list", async (request, response) => {
             );
         }
     } catch (error) {
-        (error) => errorHandler(response, error);
+        errorHandler(response, error);
     }
 });
 
@@ -254,34 +255,71 @@ router.get("/task/list", async (request, response) => {
             );
         }
     } catch (error) {
-        (error) => errorHandler(response, error);
+        errorHandler(response, error);
+    }
+});
+
+// 测试事务等原子性
+router.get("/task/delete", (request, response) => {
+    try {
+        const sql = `DELETE FROM deploy_upgrade_task WHERE id = ?`;
+        const query = sqlUtil.execute(sql, [2]);
+        query.then(
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
+        );
+    } catch (error) {
+        errorHandler(response, error);
     }
 });
 
 // 取消，停止，重启升级任务
-router.post("/task/operate", (request, response) => {
+router.post("/task/operate", async (request, response) => {
     try {
-        const opt = req.body.opt; // CANCEL, STOP, RESTART
-        const groupIds = req.body.group_ids || null;
-        const taskIds = req.body.task_ids || null;
+        const opt = request.body.opt; // CANCEL, STOP, RESTART
+        const groupIds = request.body.group_ids || null;
+        const taskIds = request.body.task_ids || null;
+        if (!groupIds && !taskIds) {
+            response.status(500).json({
+                code: 1,
+                msg: "参数错误"
+            });
+        }
 
         if (opt === "CANCEL") {
-            state = 2;
-          } else if (opt === "STOP" || opt === "RESTART") {
+            state = 5;
+        } else if (opt === "STOP" || opt === "RESTART") {
             state = 4;
-          } else {
+        } else {
             state = 2;
-          }
-          console.info(groupIds, taskIds);
-          response.json({
-            code: 0,
-            data: "",
-            pagination,
-            msg: "成功"
+        }
+
+        await sqlUtil.executeTransaction(async (connection) => {
+            const ids = groupIds ? groupIds.split(",") : taskIds.split(",").map((item) => parseInt(item));
+            let params = [state, ...ids];
+            let sql = `UPDATE deploy_upgrade_task SET state = ? WHERE deploy_upgrade_task.${
+                groupIds ? "group" : "id"
+            } IN (${ids.map(() => "?").join(",")})`; // 注意需要生成和id个数匹配的多个占位符
+            await connection.execute(sql, params);
+            sql = `SELECT id FROM deploy_upgrade_task WHERE deploy_upgrade_task.${groupIds ? "group" : "id"} IN (${ids
+                .map(() => "?")
+                .join(",")})`; // 注意需要生成和id个数匹配的多个占位符
+            params = [...ids];
+            let = num = 0;
+            for (let index = 0; index < 5000000000; index++) {
+                num++;
+            }
+            console.info("num:", num);
+            const rows = await connection.execute(sql, params);
+            console.info(rows);
+            response.json({
+                code: 0,
+                data: rows,
+                msg: "成功"
+            });
         });
-        
     } catch (error) {
-        (error) => errorHandler(response, error);
+        errorHandler(response, error);
     }
 });
 
