@@ -44,7 +44,7 @@
                 // url = "http://localhost:3001/deploy/vehicle/info?vehicle=J7A01"
                 url = "http://localhost:3001/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
                 url = "http://localhost:3001/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
-                url = "http://localhost:3001/deploy/task/delete";
+                // url = "http://localhost:3001/deploy/task/delete";
                 fetch(url, {
                     timeout: 5 * 1000
                 })
@@ -54,19 +54,40 @@
 
             const btnFile = document.getElementById("btnFile");
             btnFile.onclick = () => {
-                const url = "http://localhost:3001/deploy/task/operate";
+                const url = "http://localhost:3001/deploy/task/upgrade";
                 fetch(url, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        opt: "CANCEL",
-                        task_ids: "1,2,3,4,5"
+                        project: 1,
+                        project_artifacts: "HWL4_X86/cicd",
+                        creator: 1,
+                        vehicles: "J7A01",
+                        package_on_artifacts:
+                            "HWL4_X86-20230607-153750-v1.0.27.tar.gz,HWL4_X86-20230609-155310-v1.0.31.tar.gz",
+                        package_on_vehicle: "HWL4_X86-20230608-110818-v1.0.28.tar.gz",
+                        cur_package: "HWL4_X86-20230609-155310-v1.0.31.tar.gz"
                     }),
                     timeout: 5 * 1000
                 }).then(console.info);
             };
+
+            // btnFile.onclick = () => {
+            //     const url = "http://localhost:3001/deploy/task/operate";
+            //     fetch(url, {
+            //         method: "POST",
+            //         headers: {
+            //             "Content-Type": "application/json"
+            //         },
+            //         body: JSON.stringify({
+            //             opt: "CANCEL",
+            //             task_ids: "1,2,3,4,5"
+            //         }),
+            //         timeout: 5 * 1000
+            //     }).then(console.info);
+            // };
 
             const btnDownload = document.getElementById("btnDownload");
             btnDownload.onclick = () => {

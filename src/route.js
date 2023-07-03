@@ -259,7 +259,7 @@ router.get("/task/list", async (request, response) => {
     }
 });
 
-// 测试事务等原子性
+// 测试事务原子性
 router.get("/task/delete", (request, response) => {
     try {
         const sql = `DELETE FROM deploy_upgrade_task WHERE id = ?`;
@@ -268,6 +268,52 @@ router.get("/task/delete", (request, response) => {
             (value) => fullFilled(response, value),
             (error) => errorHandler(response, error)
         );
+    } catch (error) {
+        errorHandler(response, error);
+    }
+});
+
+// 升级
+router.post("/task/upgrade", async (request, response) => {
+    try {
+        const { project, project_artifacts, creator, vehicles, package_on_artifacts, package_on_vehicle, cur_package } =
+            request.body;
+
+        if ((package_on_artifacts.length === 0 && package_on_vehicle.length === 0) || vehicles.length === 0) {
+            response.status(500).json({
+                code: 1,
+                msg: "参数错误"
+            });
+        }
+        // 创建任务组
+        const result = await sqlUtil.execute(
+            "INSERT INTO deploy_task_group (project, creator, vehicles, packages, cur_package) VALUES (?, ?, ?, ?, ?)",
+            [
+                project,
+                creator,
+                vehicles,
+                [package_on_artifacts, package_on_vehicle].join(","),
+                cur_package
+            ]
+        );
+        console.info("insertGroupResult:", result.insertId);
+        // 创建升级任务
+        const vehicleArr = vehicles.split(",");
+        const packageOnArtifactsArr = package_on_artifacts.split(",");
+        const packageOnVehicleArr = package_on_vehicle.split(",");
+        vehicleArr.forEach(v => {
+            packageOnArtifactsArr.forEach(p => {
+                const isCur = cur_package === p ? 1 : 0;
+                
+            })
+        })
+        // const group_id = insertGroupResult.insertId;
+        response.json({
+            code: 0,
+            data: result,
+            msg: "成功"
+        });
+
     } catch (error) {
         errorHandler(response, error);
     }
@@ -287,7 +333,7 @@ router.post("/task/operate", async (request, response) => {
         }
 
         if (opt === "CANCEL") {
-            state = 5;
+            state = 6;
         } else if (opt === "STOP" || opt === "RESTART") {
             state = 4;
         } else {
@@ -305,13 +351,17 @@ router.post("/task/operate", async (request, response) => {
                 .map(() => "?")
                 .join(",")})`; // 注意需要生成和id个数匹配的多个占位符
             params = [...ids];
-            let = num = 0;
-            for (let index = 0; index < 5000000000; index++) {
-                num++;
-            }
-            console.info("num:", num);
-            const rows = await connection.execute(sql, params);
-            console.info(rows);
+            const [rows] = await connection.execute(sql, params);
+            sendMsgToAll(
+                request,
+                JSON.stringify({
+                    type: "Task",
+                    message: {
+                        taskId: rows.map((i) => i.id).toString(),
+                        action: opt
+                    }
+                })
+            );
             response.json({
                 code: 0,
                 data: rows,
