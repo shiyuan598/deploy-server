@@ -324,8 +324,9 @@ router.post("/task/upgrade", async (request, response) => {
         const packageOnArtifactsArr = package_on_artifacts.split(",");
         const packageOnVehicleArr = package_on_vehicle.split(",");
         console.info("开始创建升级任务：");
+        const allPromises = [];
         vehicleArr.forEach((vehicle) => {
-            packageOnArtifactsArr.forEach(async (package) => {
+            const promises1 = packageOnArtifactsArr.map(async (package) => {
                 console.info("packageOnArtifactsArr package：", package);
                 const isCur = cur_package === package ? 1 : 0;
                 // 创建升级任务
@@ -335,10 +336,7 @@ router.post("/task/upgrade", async (request, response) => {
                 );
                 const taskId = result.insertId;
                 console.info(3);
-                // TODO: 下载文件 解压文件
-                // 查询是否已经下载过该包
-                // 已经下载过了，等待或直接使用
-                // 未下载过，创建下载任务，然后开始下载
+                // 下载文件 解压文件
                 sqlUtil.executeTransaction(async (connection) => {
                     let params = [package];
                     // 1.查询是否已经下载过该包
@@ -373,7 +371,7 @@ router.post("/task/upgrade", async (request, response) => {
                         sql = `INSERT INTO deploy_download_task (package) VALUES (?)`;
                         params = [package];
                         await connection.execute(sql, params);
-                        
+
                         artifacts.downloadPackage(project_artifacts, package).then(
                             async (path) => {
                                 console.info("下载成功后的处理", package);
@@ -428,7 +426,7 @@ router.post("/task/upgrade", async (request, response) => {
                 });
             });
             // 升级车端版本时不需要下载
-            packageOnVehicleArr.forEach(async (package) => {
+            const promises2 = packageOnVehicleArr.map(async (package) => {
                 console.info("packageOnVehicleArr package：", package);
                 const isCur = cur_package === package ? 1 : 0;
                 // 创建升级任务
@@ -453,14 +451,22 @@ router.post("/task/upgrade", async (request, response) => {
                     })
                 );
             });
+            allPromises.push(...promises1, ...promises2);
             console.info(5);
         });
-        console.info(2);
-        response.json({
-            code: 0,
-            data: result,
-            msg: "成功"
-        });
+        console.info(allPromises);
+        Promise.all(allPromises)
+            .then(() => {
+                console.info("******* Done all! ******");
+                response.json({
+                    code: 0,
+                    data: result,
+                    msg: "成功"
+                });
+            })
+            .catch((error) => {
+                errorHandler(response, error);
+            });
     } catch (error) {
         errorHandler(response, error);
     }
