@@ -20,23 +20,23 @@ async function execute(sql, params) {
 async function executeTransaction(callback) {
     let connection;
     try {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
-  
-      await callback(connection);
-  
-      await connection.commit();
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        await callback(connection);
+
+        await connection.commit();
     } catch (error) {
-      if (connection) {
-        await connection.rollback();
-      }
-      throw error;
+        if (connection) {
+            await connection.rollback();
+        }
+        throw error;
     } finally {
-      if (connection) {
-        connection.release();
-      }
+        if (connection) {
+            connection.release();
+        }
     }
-  }
+}
 
 // 封装执行查询的方法
 function executeQuery(sql, params, callback) {

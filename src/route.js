@@ -273,6 +273,19 @@ router.get("/task/delete", (request, response) => {
     }
 });
 
+// 测试事务原子性
+router.get("/extract", (request, response) => {
+    try {
+        const file = "/HWL4_X86-20230703-100541-v1.0.53.tar.gz";
+        artifacts.extractFile(file).then(
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
+        );
+    } catch (error) {
+        errorHandler(response, error);
+    }
+});
+
 // 升级
 router.post("/task/upgrade", async (request, response) => {
     try {
@@ -288,32 +301,54 @@ router.post("/task/upgrade", async (request, response) => {
         // 创建任务组
         const result = await sqlUtil.execute(
             "INSERT INTO deploy_task_group (project, creator, vehicles, packages, cur_package) VALUES (?, ?, ?, ?, ?)",
-            [
-                project,
-                creator,
-                vehicles,
-                [package_on_artifacts, package_on_vehicle].join(","),
-                cur_package
-            ]
+            [project, creator, vehicles, [package_on_artifacts, package_on_vehicle].join(","), cur_package]
         );
+        const groupId = result.insertId;
         console.info("insertGroupResult:", result.insertId);
         // 创建升级任务
         const vehicleArr = vehicles.split(",");
         const packageOnArtifactsArr = package_on_artifacts.split(",");
         const packageOnVehicleArr = package_on_vehicle.split(",");
-        vehicleArr.forEach(v => {
-            packageOnArtifactsArr.forEach(p => {
-                const isCur = cur_package === p ? 1 : 0;
-                
-            })
-        })
+        vehicleArr.forEach((vehicle) => {
+            packageOnArtifactsArr.forEach(async (package) => {
+                const isCur = cur_package === package ? 1 : 0;
+                await sqlUtil.execute(
+                    "INSERT INTO deploy_upgrade_task (`group`, vehicle, package, package_type, set_current) VALUES (?, ?, ?, ?, ?)",
+                    [groupId, vehicle, package, 0, isCur]
+                );
+                // TODO: 下载文件 解压文件
+                artifacts.downloadPackage(project_artifacts, package);
+            });
+            // 升级车端版本时不需要下载
+            packageOnVehicleArr.forEach(async (package) => {
+                const isCur = cur_package === package ? 1 : 0;
+                const result = await sqlUtil.execute(
+                    "INSERT INTO deploy_upgrade_task (`group`, vehicle, package, package_type, set_current) VALUES (?, ?, ?, ?, ?)",
+                    [groupId, vehicle, package, 1, isCur]
+                );
+                const taskId = result.insertId;
+                sendMsgToAll(
+                    request,
+                    JSON.stringify({
+                        type: "Task",
+                        message: {
+                            taskId: taskId,
+                            carName: vehicle,
+                            package: package,
+                            package_type: 1,
+                            set_current: isCur,
+                            action: "START"
+                        }
+                    })
+                );
+            });
+        });
         // const group_id = insertGroupResult.insertId;
         response.json({
             code: 0,
             data: result,
             msg: "成功"
         });
-
     } catch (error) {
         errorHandler(response, error);
     }
