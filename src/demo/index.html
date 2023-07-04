@@ -42,10 +42,11 @@
                 // url = "http://localhost:3001/deploy/projects"
                 url = "http://localhost:3001/deploy/packages?artifacts_url=/HWL4_X86/cicd";
                 // url = "http://localhost:3001/deploy/vehicle/info?vehicle=J7A01"
-                url = "http://localhost:3001/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
-                url = "http://localhost:3001/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
-                url = "http://localhost:3001/deploy/task/delete";
-                url = "http://localhost:3001/deploy/extract";
+                // url = "http://localhost:3001/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
+                // url = "http://localhost:3001/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
+                // url = "http://localhost:3001/deploy/task/delete";
+                // url = "http://localhost:3001/deploy/extract";
+                // url = "http://localhost:3001/deploy/downloadPackage";
                 fetch(url, {
                     timeout: 5 * 1000
                 })
@@ -93,7 +94,8 @@
 
             const btnDownload = document.getElementById("btnDownload");
             btnDownload.onclick = () => {
-                fetch("http://localhost:3001/deploy/download", {
+                const url = "http://localhost:3001/deploy/downloadPackage";
+                fetch(url, {
                     timeout: 5 * 1000
                 }).then(console.info);
             };

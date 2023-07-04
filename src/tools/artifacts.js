@@ -1,8 +1,9 @@
 const axios = require("axios");
 const fs = require("fs");
-const targz = require('targz');
+const targz = require("targz");
 const config = require("../config");
 const util = require("../tools/util");
+const { error } = require("console");
 
 const { USERNAME, PASSWORD, API_KEY, BASE_URL, BUILD_JSON, DOWNLOAD_DIR, EXTRACT_DIR } = config.artifacts;
 
@@ -66,6 +67,7 @@ const findJsonByName = (project, name) => {
 // 下载包
 const downloadPackage = (projectArtifacts, packageName) => {
     const url = util.joinPaths(BASE_URL, projectArtifacts, packageName);
+    console.info("url:", url);
     return new Promise((resolve, reject) => {
         console.info("开始下载了", packageName);
         axios
@@ -80,36 +82,26 @@ const downloadPackage = (projectArtifacts, packageName) => {
             .then(async (response) => {
                 data = response.data;
                 // 保存文件
+                console.info("下载完成， 准备保存包");
                 const fileDir = `${DOWNLOAD_DIR}${packageName}`;
                 const extractDir = `${EXTRACT_DIR}${packageName.replace(".tar.gz", "")}`;
-                // if (!fs.existsSync(extractDir)) {
-                //     fs.mkdirSync(extractDir, { recursive: true });
-                // }
-                console.info("准备写入文件", packageName);
-                // await fs.writeFile(fileDir, Buffer.from(response.data, "binary"), (data) => {
-                //     console.info("完成", packageName, data);
-                // });
-
-                // await tar.x({
-                //     file: fileDir,
-                //     cwd: extractDir
-                // });
-                const filePath = DOWNLOAD_DIR + "HWL4_X86-20230703-100541-v1.0.53.tar.gz";
-                const extractPath = EXTRACT_DIR + "HWL4_X86-20230703-100541-v1.0.53";
-                if (!fs.existsSync(extractPath)) {
-                    fs.mkdirSync(extractPath, { recursive: true });
-                }
-                console.info("开始解压");
-                fs.createReadStream(filePath)
-                    .pipe(
-                        tar.extract({
-                            cwd: extractPath
-                        })
-                    )
-                    .on("finish", () => {
-                        console.log("解压完成！");
+                writeFile(data, fileDir)
+                    .then((v) => {
+                        console.info("写入文件完成, 准备解压");
+                        extractFile(fileDir, extractDir)
+                            .then((v) => {
+                                console.info("解压文件完成", v);
+                                resolve("ok");
+                            })
+                            .catch((error) => {
+                                console.error("解压文件失败:", error);
+                                reject("解压文件失败");
+                            });
+                    })
+                    .catch((error) => {
+                        console.error("写入文件失败:", error);
+                        reject("写入文件失败");
                     });
-                resolve(data);
             })
             .catch((error) => {
                 console.error("下载文件失败:", error);
@@ -122,9 +114,13 @@ const downloadPackage = (projectArtifacts, packageName) => {
 const writeFile = (data, path) => {
     try {
         return new Promise((resolve, reject) => {
-            fs.writeFile(path, data, resolve).catch((error) => {
-                console.info("解压失败", error);
-                reject(error);
+            fs.writeFile(path, data, (error) => {
+                if (error) {
+                    console.info("写入文件失败！");
+                    reject(error);
+                }
+                console.info("写入文件成功！");
+                resolve("写入成功！");
             });
         });
     } catch (error) {
@@ -133,30 +129,31 @@ const writeFile = (data, path) => {
 };
 
 // 解压包
-const extractFile = (file) => {
+const extractFile = (filePath, extractDir) => {
     return new Promise((resolve, reject) => {
         try {
             console.info("开始解压");
-            const filePath = DOWNLOAD_DIR + file;
-            const extractPath = EXTRACT_DIR + file;
-            if (!fs.existsSync(extractPath)) {
-                fs.mkdirSync(extractPath, { recursive: true });
+            if (!fs.existsSync(extractDir)) {
+                fs.mkdirSync(extractDir, { recursive: true });
             }
-            targz.decompress({
-                src: filePath,
-                dest: extractPath
-            }, function(err){
-                if(err) {
-                    console.log(err);
-                    reject(err);
-                } else {
-                    console.log("Done!");
-                    resolve("ok");
+            targz.decompress(
+                {
+                    src: filePath,
+                    dest: extractDir
+                },
+                function (err) {
+                    if (err) {
+                        console.log(err);
+                        reject(err);
+                    } else {
+                        console.log("Done!");
+                        resolve("ok");
+                    }
                 }
-            });
+            );
         } catch (error) {
             console.info("解压失败！");
-            reject(error);
+            throw error;
         }
     });
 };

@@ -273,7 +273,21 @@ router.get("/task/delete", (request, response) => {
     }
 });
 
-// 测试事务原子性
+// 测试下载、解压
+router.get("/downloadPackage", (request, response) => {
+    try {
+        const projectArtifacts ="/GSL4_X86/cicd/";
+        const packageName = "GSL4_X86-20230609-210913-v0.1.7.tar.gz";
+        artifacts.downloadPackage(projectArtifacts, packageName).then(
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
+        );
+    } catch (error) {
+        errorHandler(response, error);
+    }
+});
+
+// 测试解压
 router.get("/extract", (request, response) => {
     try {
         const file = "HWL4_ORIN-20230627-092902-v0.1.33.tar.gz";

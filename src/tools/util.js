@@ -5,7 +5,7 @@ const joinPath = (pre, sub) => {
 
 // 拼接多个路径，正确处理路径间的斜线
 const joinPaths = (...paths) => {
-    const pathStr = paths.map((item) => item.replace(/^\/|$\//g, "")).join("/");
+    const pathStr = paths.map((item) => item.replace(/^\/|\/$/g, "")).join("/");
     if (paths[0].startsWith("/")) {
         return "/" + pathStr;
     }
