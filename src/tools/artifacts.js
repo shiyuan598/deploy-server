@@ -1,10 +1,8 @@
 const axios = require("axios");
 const fs = require("fs");
-const tar = require("tar");
-const zlib = require("zlib");
+const targz = require('targz');
 const config = require("../config");
 const util = require("../tools/util");
-const { json } = require("express");
 
 const { USERNAME, PASSWORD, API_KEY, BASE_URL, BUILD_JSON, DOWNLOAD_DIR, EXTRACT_DIR } = config.artifacts;
 
@@ -138,23 +136,24 @@ const writeFile = (data, path) => {
 const extractFile = (file) => {
     return new Promise((resolve, reject) => {
         try {
+            console.info("开始解压");
             const filePath = DOWNLOAD_DIR + file;
             const extractPath = EXTRACT_DIR + file;
             if (!fs.existsSync(extractPath)) {
                 fs.mkdirSync(extractPath, { recursive: true });
             }
-            console.info("开始解压");
-            fs.createReadStream(filePath)
-                .pipe(
-                    tar.extract({
-                        cwd: extractPath
-                    })
-                )
-                .on("finish", () => {
-                    console.log("解压完成！");
+            targz.decompress({
+                src: filePath,
+                dest: extractPath
+            }, function(err){
+                if(err) {
+                    console.log(err);
+                    reject(err);
+                } else {
+                    console.log("Done!");
                     resolve("ok");
-                })
-                .on("error", reject);
+                }
+            });
         } catch (error) {
             console.info("解压失败！");
             reject(error);

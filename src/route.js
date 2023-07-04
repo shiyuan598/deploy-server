@@ -276,7 +276,7 @@ router.get("/task/delete", (request, response) => {
 // 测试事务原子性
 router.get("/extract", (request, response) => {
     try {
-        const file = "/HWL4_X86-20230703-100541-v1.0.53.tar.gz";
+        const file = "HWL4_ORIN-20230627-092902-v0.1.33.tar.gz";
         artifacts.extractFile(file).then(
             (value) => fullFilled(response, value),
             (error) => errorHandler(response, error)
