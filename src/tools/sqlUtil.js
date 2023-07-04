@@ -52,29 +52,8 @@ function executeQuery(sql, params, callback) {
     });
 }
 
-// SELECT 查询
-function select(table, columns, condition, params, callback) {
-    const sql = `SELECT ${columns} FROM ${table} WHERE ${condition}`;
-    executeQuery(sql, params, callback);
-}
-
-// UPDATE 操作
-function update(table, values, condition, callback) {
-    const sql = `UPDATE ${table} SET ? WHERE ${condition}`;
-    executeQuery(sql, values, callback);
-}
-
-// DELETE 操作
-function remove(table, condition, callback) {
-    const sql = `DELETE FROM ${table} WHERE ${condition}`;
-    executeQuery(sql, [], callback);
-}
-
 module.exports = {
     executeTransaction,
     execute,
-    executeQuery,
-    select,
-    update,
-    remove
+    executeQuery
 };

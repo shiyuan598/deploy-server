@@ -58,18 +58,17 @@ const findJsonByName = (project, name) => {
                 resolve(data);
             })
             .catch((error) => {
-                console.error("获取文件失败:", error);
-                reject("获取文件失败");
+                console.error("获取JSON失败:", error);
+                reject("获取JSON失败");
             });
     });
 };
 
 // 下载包
 const downloadPackage = (projectArtifacts, packageName) => {
+    console.info("开始下载:", packageName);
     const url = util.joinPaths(BASE_URL, projectArtifacts, packageName);
-    console.info("url:", url);
     return new Promise((resolve, reject) => {
-        console.info("开始下载了", packageName);
         axios
             .get(url, {
                 timeout: 6000 * 5,
@@ -82,26 +81,22 @@ const downloadPackage = (projectArtifacts, packageName) => {
             .then(async (response) => {
                 data = response.data;
                 // 保存文件
-                console.info("下载完成， 准备保存包");
                 const fileDir = `${DOWNLOAD_DIR}${packageName}`;
                 const extractDir = `${EXTRACT_DIR}${packageName.replace(".tar.gz", "")}`;
-                writeFile(data, fileDir)
-                    .then((v) => {
-                        console.info("写入文件完成, 准备解压");
-                        extractFile(fileDir, extractDir)
-                            .then((v) => {
-                                console.info("解压文件完成", v);
-                                resolve("ok");
-                            })
-                            .catch((error) => {
-                                console.error("解压文件失败:", error);
-                                reject("解压文件失败");
-                            });
-                    })
-                    .catch((error) => {
-                        console.error("写入文件失败:", error);
-                        reject("写入文件失败");
-                    });
+                const writeRes = await writeFile(data, fileDir);
+                if (writeRes === "ok") {
+                    const extractRes = await extractFile(fileDir, extractDir);
+                    if (extractRes === "ok") {
+                        console.info("下载并解压完成:", packageName);
+                        resolve(extractDir);
+                    } else {
+                        console.error("解压文件失败:", error);
+                        reject("解压文件失败");
+                    }
+                } else {
+                    console.error("写入文件失败:", error);
+                    reject("写入文件失败");
+                }
             })
             .catch((error) => {
                 console.error("下载文件失败:", error);
@@ -116,11 +111,9 @@ const writeFile = (data, path) => {
         return new Promise((resolve, reject) => {
             fs.writeFile(path, data, (error) => {
                 if (error) {
-                    console.info("写入文件失败！");
                     reject(error);
                 }
-                console.info("写入文件成功！");
-                resolve("写入成功！");
+                resolve("ok");
             });
         });
     } catch (error) {
@@ -132,7 +125,6 @@ const writeFile = (data, path) => {
 const extractFile = (filePath, extractDir) => {
     return new Promise((resolve, reject) => {
         try {
-            console.info("开始解压");
             if (!fs.existsSync(extractDir)) {
                 fs.mkdirSync(extractDir, { recursive: true });
             }
@@ -146,13 +138,11 @@ const extractFile = (filePath, extractDir) => {
                         console.log(err);
                         reject(err);
                     } else {
-                        console.log("Done!");
                         resolve("ok");
                     }
                 }
             );
         } catch (error) {
-            console.info("解压失败！");
             throw error;
         }
     });
