@@ -3,7 +3,6 @@ const fs = require("fs");
 const targz = require("targz");
 const config = require("../../config");
 const util = require("../tools/util");
-const { error } = require("console");
 
 const { USERNAME, PASSWORD, API_KEY, BASE_URL, BUILD_JSON, DOWNLOAD_DIR, EXTRACT_DIR } = config.artifacts;
 

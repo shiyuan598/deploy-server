@@ -31,6 +31,11 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "@babel/core": "^7.22.6",
+    "@babel/preset-env": "^7.22.6",
+    "babel-loader": "^9.1.2",
+    "nodemon": "^2.0.22",
+    "webpack": "^5.88.1",
+    "webpack-cli": "^5.1.4"
   }
 }
