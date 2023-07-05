@@ -38,22 +38,7 @@ async function executeTransaction(callback) {
     }
 }
 
-// 封装执行查询的方法
-function executeQuery(sql, params, callback) {
-    // 执行查询操作
-    pool.execute(sql, params, (err, results) => {
-        // connection.release(); // 释放连接
-        if (err) {
-            console.error("执行查询时发生错误:", err);
-            callback(err, null);
-        } else {
-            callback(null, results);
-        }
-    });
-}
-
 module.exports = {
     executeTransaction,
-    execute,
-    executeQuery
+    execute
 };

@@ -10,7 +10,7 @@
         <h4>Flask-SocketIO Example</h4>
         <div id="log"></div>
         <input type="text" id="message-input" />
-        <input type="submit" value="Send" />
+        <button id="send">发送</button>
         <p></p>
         <button id="btnTest">测试</button>
         <button id="btnFile">文件</button>
@@ -33,6 +33,59 @@
             // 连接关闭时触发
             socket.onclose = () => {
                 console.log("WebSocket连接已关闭");
+            };
+
+            const send = document.getElementById("send");
+            send.onclick = () => {
+                const text = document.getElementById("message-input").value;
+                socket.send(
+                    JSON.stringify({
+                        type: "GetPackages",
+                        message: {
+                            project: "HWL4_X86",
+                            carName: "J7A01",
+                            pageNo: 3,
+                            pageSize: 4
+                        }
+                    })
+                );
+
+                setTimeout(() => {
+                    socket.send(
+                        JSON.stringify({
+                            type: "CarInfo",
+                            message: {
+                                carName: "J7A01",
+                                version: "扥更短天通苑蓝风铃老根开发瞪大",
+                                timestamp: 168345846,
+                                lonlat: [124.56, 32.43],
+                                currentPackage: "v0.1.2.3",
+                                localPackageList: ["v0.1", "v0.2", "v0.3"],
+                                taskInfo: {
+                                    taskId: 2,
+                                    status: "STOP",
+                                    desc: "结束"
+                                }
+                            }
+                        })
+                    );
+                }, 3000);
+
+                setTimeout(() => {
+                    socket.send(
+                        JSON.stringify({
+                            type: "CarInfo",
+                            message: {
+                                carName: "J7A02",
+                                version: "戳开监控点杨晨晨是扥开堆料",
+                                timestamp: 168345846,
+                                lonlat: [117.49, 31.6576],
+                                currentPackage: "v0.1.2.1",
+                                localPackageList: ["v0.21", "v0.22", "v0.23"]
+                            }
+                        })
+                    );
+                }, 5000);
             };
 
             const btnTest = document.getElementById("btnTest");

@@ -1,5 +1,3 @@
-const axios = require("axios");
-const fs = require("fs");
 const express = require("express");
 const WebSocket = require("ws");
 const sqlUtil = require("./tools/sqlUtil");
@@ -30,9 +28,9 @@ const errorHandler = (response, err) => {
 // 向所有客户端发送消息
 const sendMsgToAll = (request, msg) => {
     // 获取 WebSocket 实例
-    const wss = request.app.get("wss");
+    const wsServer = request.app.get("wsServer");
     // 发送消息给所有连接的WebSocket客户端
-    wss.clients.forEach((client) => {
+    wsServer.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(msg);
         }
@@ -420,6 +418,7 @@ router.post("/task/upgrade", async (request, response) => {
                                 // 修改升级任务的状态
                                 sql = `UPDATE deploy_upgrade_task set state = ? WHERE package = ? AND state = 0 AND package_type = 0`;
                                 params = [5, package];
+                                connection.execute(sql, params);
                             }
                         );
                     }
@@ -524,64 +523,6 @@ router.post("/task/operate", (request, response) => {
     } catch (error) {
         errorHandler(response, error);
     }
-});
-
-router.get("/download", (req, res) => {
-    const packageName = "GSL4_X86-20230606-144811-v0.1.4.tar.gz";
-    const url = ARTIFACTS_BASE_URL + "/GSL4_X86/cicd/" + packageName;
-    const time = Date.now();
-
-    console.info("开始下载 " + time);
-    // 获取 WebSocket 实例
-    const wss = req.app.get("wss");
-    // 发送消息给所有连接的WebSocket客户端
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send("开始下载 " + time);
-        }
-    });
-    axios
-        .get(url, {
-            timeout: 6000 * 5,
-            auth: {
-                username: ARTIFACTS_USERNAME,
-                password: ARTIFACTS_PASSWORD
-            },
-            responseType: "arraybuffer"
-        })
-        .then((response) => {
-            if (response.status === 200) {
-                // fs.writeFileSync(DOWNLOAD_DIR, Buffer.from(response.data, 'binary'));
-                const fileDir = DOWNLOAD_DIR + time + ".tar.gz";
-                fs.writeFile(fileDir, Buffer.from(response.data, "binary"), console.info);
-                console.log("文件下载成功" + time);
-                // 发送消息给所有连接的WebSocket客户端
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send("文件下载成功 " + time);
-                    }
-                });
-                // 写入数据库
-                sqlUtil.executeQuery(
-                    `insert into deploy_download_task (package, file_dir, state)
-                             values(?, ?, 1)`,
-                    [packageName, fileDir],
-                    (err, results) => {
-                        if (err) {
-                            console.info("服务器内部错误");
-                        } else {
-                            console.info("文件下载完成了");
-                        }
-                    }
-                );
-            } else {
-                console.log("文件下载失败");
-            }
-        })
-        .catch((error) => {
-            console.error("发生错误:", error);
-        });
-    res.send("下载中 " + Date.now());
 });
 
 module.exports = router;
