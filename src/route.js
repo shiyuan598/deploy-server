@@ -79,14 +79,14 @@ router.get("/packages", (request, response) => {
 // 查询一个包的JSON描述信息
 router.get("/package/json", (request, response) => {
     try {
-        const { project, packageName } = request.query;
-        if (!project || !packageName) {
+        const { projectName, packageName } = request.query;
+        if (!projectName || !packageName) {
             response.status(500).json({
                 code: 1,
                 msg: "参数错误"
             });
         }
-        artifacts.findJsonByName(project, packageName).then(
+        artifacts.findJsonByName(projectName, packageName).then(
             (value) => fullFilled(response, value),
             (error) => errorHandler(response, error)
         );
@@ -143,7 +143,7 @@ router.get("/group/list", async (request, response) => {
         } else {
             // 查询分页的数据
             const sql = `
-                SELECT task_group.id, project.name, task_group.creator, 
+                SELECT task_group.id, project.name as project, task_group.creator, 
                 DATE_FORMAT(DATE_ADD(task_group.create_time, INTERVAL 8 HOUR), '%Y-%m-%d %H:%i:%S') AS create_time,
                 task_group.cur_package, task_group.vehicles, task_group.packages,
                 COUNT(CASE WHEN task.state < ? THEN 1 ELSE NULL END) AS unfinished,
