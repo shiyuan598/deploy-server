@@ -1,7 +1,8 @@
 const express = require("express");
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const { startWebSocketServer } = require('./src/websocket');
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const { startWebSocketServer } = require("./src/websocket");
+const { PORT } = require("./config");
 
 const app = express();
 
@@ -17,9 +18,9 @@ app.use(bodyParser.json());
 app.use(cors());
 
 // 引入不同的模块
-const deployRoute = require('./src/route');
+const deployRoute = require("./src/route");
 // 注册模块路由
-app.use('/deploy', deployRoute);
+app.use("/deploy", deployRoute);
 
 // 处理根路径的HTTP请求
 app.get("/", (req, res) => {
@@ -27,11 +28,11 @@ app.get("/", (req, res) => {
 });
 
 // 创建HTTP服务器
-const server = app.listen(3001, () => {
-    console.log("HTTP server is running on port 3001");
+const server = app.listen(PORT, () => {
+    console.log(`HTTP server is running on port ${PORT}`);
 });
 // 启动WebSocket服务器
 const wsServer = startWebSocketServer(server);
 
 // 将 WebSocket 实例保存在 Express 应用程序中
-app.set('wsServer', wsServer);
+app.set("wsServer", wsServer);

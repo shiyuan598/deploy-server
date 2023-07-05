@@ -1,3 +1,5 @@
+const PORT = 9012;
+
 const database = {
     host: "localhost",
     port: "3307",
@@ -17,6 +19,7 @@ const artifacts = {
 }
 
 module.exports = {
+    PORT,
     database,
     artifacts
 };

@@ -1,7 +1,7 @@
 const axios = require("axios");
 const fs = require("fs");
 const targz = require("targz");
-const config = require("../config");
+const config = require("../../config");
 const util = require("../tools/util");
 const { error } = require("console");
 
@@ -9,7 +9,7 @@ const { USERNAME, PASSWORD, API_KEY, BASE_URL, BUILD_JSON, DOWNLOAD_DIR, EXTRACT
 
 // 查询一个目录下的所有文件
 const getAllFiles = (path) => {
-    const url = util.joinPaths(BASE_URL, "/api/storage", path)
+    const url = util.joinPaths(BASE_URL, "/api/storage", path);
     return new Promise((resolve, reject) => {
         axios
             .get(url, {
