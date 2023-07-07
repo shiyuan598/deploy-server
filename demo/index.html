@@ -16,7 +16,7 @@
         <button id="btnFile">文件</button>
         <button id="btnDownload">下载</button>
         <script>
-            const socket = new WebSocket("ws://localhost:9006");
+            const socket = new WebSocket("ws://172.16.18.123:9010/socket.io");
 
             // 连接成功时触发
             socket.onopen = () => {
@@ -91,15 +91,15 @@
             const btnTest = document.getElementById("btnTest");
             btnTest.onclick = () => {
                 let url =
-                    "http://localhost:9006/deploy/package/json?project=HWL4_X86&package=HWL4_X86-20230607-153750-v1.0.27.tar.gz";
-                url = "http://localhost:9006/deploy/projects";
-                // url = "http://localhost:9006/deploy/packages?artifacts_url=/HWL4_X86/cicd";
-                // url = "http://localhost:9006/deploy/vehicle/info?vehicle=J7A01"
-                // url = "http://localhost:9006/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
-                // url = "http://localhost:9006/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
-                // url = "http://localhost:9006/deploy/task/delete";
-                // url = "http://localhost:9006/deploy/extract";
-                // url = "http://localhost:9006/deploy/downloadPackage";
+                    "http://172.16.18.123:9010/deploy/package/json?project=HWL4_X86&package=HWL4_X86-20230607-153750-v1.0.27.tar.gz";
+                url = "http://172.16.18.123:9010/deploy/projects";
+                // url = "http://172.16.18.123:9010/deploy/packages?artifacts_url=/HWL4_X86/cicd";
+                // url = "http://172.16.18.123:9010/deploy/vehicle/info?vehicle=J7A01"
+                // url = "http://172.16.18.123:9010/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
+                // url = "http://172.16.18.123:9010/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
+                // url = "http://172.16.18.123:9010/deploy/task/delete";
+                // url = "http://172.16.18.123:9010/deploy/extract";
+                // url = "http://172.16.18.123:9010/deploy/downloadPackage";
                 fetch(url, {
                     timeout: 5 * 1000
                 })
@@ -109,7 +109,7 @@
 
             const btnFile = document.getElementById("btnFile");
             btnFile.onclick = () => {
-                const url = "http://localhost:9006/deploy/task/upgrade";
+                const url = "http://172.16.18.123/:9010/deploy/task/upgrade";
                 fetch(url, {
                     method: "POST",
                     headers: {
@@ -131,7 +131,7 @@
             };
 
             // btnFile.onclick = () => {
-            //     const url = "http://localhost:9006/deploy/task/operate";
+            //     const url = "http://172.16.18.123:9010/deploy/task/operate";
             //     fetch(url, {
             //         method: "POST",
             //         headers: {
@@ -147,7 +147,7 @@
 
             const btnDownload = document.getElementById("btnDownload");
             btnDownload.onclick = () => {
-                const url = "http://localhost:9006/deploy/downloadPackage";
+                const url = "http://172.16.18.123:9010/deploy/downloadPackage";
                 fetch(url, {
                     timeout: 5 * 1000
                 }).then(console.info);
