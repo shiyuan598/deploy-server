@@ -1,9 +1,11 @@
 const express = require("express");
-const WebSocket = require("ws");
 const sqlUtil = require("./tools/sqlUtil");
 const artifacts = require("./tools/artifacts");
+const {upgrade, sendMsgToAll} = require("./business")
 
 const router = express.Router();
+
+const getWsServer = (request) => request.app.get("wsServer");
 
 // 响应处理
 const fullFilled = (response, data, pagination) => {
@@ -23,18 +25,6 @@ const errorHandler = (response, err) => {
             code: 1,
             msg: err.toString()
         });
-};
-
-// 向所有客户端发送消息
-const sendMsgToAll = (request, msg) => {
-    // 获取 WebSocket 实例
-    const wsServer = request.app.get("wsServer");
-    // 发送消息给所有连接的WebSocket客户端
-    wsServer.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(msg);
-        }
-    });
 };
 
 // 处理特定路径的路由
@@ -298,8 +288,19 @@ router.get("/extract", (request, response) => {
     }
 });
 
+router.post("/task/upgrade", (request, response) => {
+    try {
+        upgrade(request.body, getWsServer(request)).then(
+            (value) => fullFilled(response, value),
+            (error) => errorHandler(response, error)
+        );
+    } catch(error) {
+        errorHandler(response, error);
+    }
+});
+
 // 升级
-router.post("/task/upgrade", async (request, response) => {
+router.post("/task/upgrade2", async (request, response) => {
     try {
         const { project, project_artifacts, creator, vehicles, package_on_artifacts, package_on_vehicle, cur_package } =
             request.body;
@@ -345,7 +346,7 @@ router.post("/task/upgrade", async (request, response) => {
                         if (rows[0].state == 1) {
                             console.info("已经下载好了，立马可用...");
                             sendMsgToAll(
-                                request,
+                                getWsServer(request),
                                 JSON.stringify({
                                     type: "Task",
                                     message: {
@@ -392,7 +393,7 @@ router.post("/task/upgrade", async (request, response) => {
                                     console.info("通知车端：升级远程版本", packageName);
                                     rows.forEach((id) => {
                                         sendMsgToAll(
-                                            request,
+                                            getWsServer(request),
                                             JSON.stringify({
                                                 type: "Task",
                                                 message: {
@@ -436,7 +437,7 @@ router.post("/task/upgrade", async (request, response) => {
                 console.info("通知车端：升级车端版本", packageName);
                 const taskId = result.insertId;
                 sendMsgToAll(
-                    request,
+                    getWsServer(request),
                     JSON.stringify({
                         type: "Task",
                         message: {
@@ -505,7 +506,7 @@ router.post("/task/operate", (request, response) => {
             params = [...ids];
             const [rows] = await connection.execute(sql, params);
             sendMsgToAll(
-                request,
+                getWsServer(request),
                 JSON.stringify({
                     type: "Task",
                     message: {

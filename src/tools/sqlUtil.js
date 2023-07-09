@@ -11,7 +11,7 @@ async function execute(sql, params) {
         const [result] = await pool.execute(sql, params);
         return result;
     } catch (error) {
-        console.error("执行查询时发生错误:", error);
+        console.error("执行查询时发生错误:", sql, params, error);
         throw error;
     }
 }

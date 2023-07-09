@@ -16,7 +16,7 @@
         <button id="btnFile">文件</button>
         <button id="btnDownload">下载</button>
         <script>
-            const socket = new WebSocket("ws://172.16.18.123:9010/socket.io");
+            const socket = new WebSocket("ws://localhost:9012/socket.io");
 
             // 连接成功时触发
             socket.onopen = () => {
@@ -38,68 +38,81 @@
             const send = document.getElementById("send");
             send.onclick = () => {
                 const text = document.getElementById("message-input").value;
+                // socket.send(
+                //     JSON.stringify({
+                //         type: "GetPackages",
+                //         message: {
+                //             project: "HWL4_X86",
+                //             carName: "J7A01",
+                //             pageNo: 3,
+                //             pageSize: 4
+                //         }
+                //     })
+                // );
+
                 socket.send(
                     JSON.stringify({
-                        type: "GetPackages",
+                        type: "Task",
                         message: {
-                            project: "HWL4_X86",
                             carName: "J7A01",
-                            pageNo: 3,
-                            pageSize: 4
+                            creator: 1,
+                            package_on_artifacts: "",
+                            package_on_vehicle: "HWL4_X86-20230608-110818-v1.0.28.tar.gz",
+                            cur_package: "HWL4_X86-20230609-155310-v1.0.31.tar.gz"
                         }
                     })
                 );
 
-                setTimeout(() => {
-                    socket.send(
-                        JSON.stringify({
-                            type: "CarInfo",
-                            message: {
-                                carName: "J7A01",
-                                version: "扥更短天通苑蓝风铃老根开发瞪大",
-                                timestamp: 168345846,
-                                lonlat: [124.56, 32.43],
-                                currentPackage: "v0.1.2.3",
-                                localPackageList: ["v0.1", "v0.2", "v0.3"],
-                                taskInfo: {
-                                    taskId: 2,
-                                    status: "STOP",
-                                    desc: "结束"
-                                }
-                            }
-                        })
-                    );
-                }, 3000);
+                // setTimeout(() => {
+                //     socket.send(
+                //         JSON.stringify({
+                //             type: "CarInfo",
+                //             message: {
+                //                 carName: "J7A01",
+                //                 version: "扥更短天通苑蓝风铃老根开发瞪大",
+                //                 timestamp: 168345846,
+                //                 lonlat: [124.56, 32.43],
+                //                 currentPackage: "v0.1.2.3",
+                //                 localPackageList: ["v0.1", "v0.2", "v0.3"],
+                //                 taskInfo: {
+                //                     taskId: 2,
+                //                     status: "STOP",
+                //                     desc: "结束"
+                //                 }
+                //             }
+                //         })
+                //     );
+                // }, 3000);
 
-                setTimeout(() => {
-                    socket.send(
-                        JSON.stringify({
-                            type: "CarInfo",
-                            message: {
-                                carName: "J7A02",
-                                version: "戳开监控点杨晨晨是扥开堆料",
-                                timestamp: 168345846,
-                                lonlat: [117.49, 31.6576],
-                                currentPackage: "v0.1.2.1",
-                                localPackageList: ["v0.21", "v0.22", "v0.23"]
-                            }
-                        })
-                    );
-                }, 5000);
+                // setTimeout(() => {
+                //     socket.send(
+                //         JSON.stringify({
+                //             type: "CarInfo",
+                //             message: {
+                //                 carName: "J7A02",
+                //                 version: "戳开监控点杨晨晨是扥开堆料",
+                //                 timestamp: 168345846,
+                //                 lonlat: [117.49, 31.6576],
+                //                 currentPackage: "v0.1.2.1",
+                //                 localPackageList: ["v0.21", "v0.22", "v0.23"]
+                //             }
+                //         })
+                //     );
+                // }, 5000);
             };
 
             const btnTest = document.getElementById("btnTest");
             btnTest.onclick = () => {
                 let url =
-                    "http://172.16.18.123:9010/deploy/package/json?project=HWL4_X86&package=HWL4_X86-20230607-153750-v1.0.27.tar.gz";
-                url = "http://172.16.18.123:9010/deploy/projects";
-                // url = "http://172.16.18.123:9010/deploy/packages?artifacts_url=/HWL4_X86/cicd";
-                // url = "http://172.16.18.123:9010/deploy/vehicle/info?vehicle=J7A01"
-                // url = "http://172.16.18.123:9010/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
-                // url = "http://172.16.18.123:9010/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
-                // url = "http://172.16.18.123:9010/deploy/task/delete";
-                // url = "http://172.16.18.123:9010/deploy/extract";
-                // url = "http://172.16.18.123:9010/deploy/downloadPackage";
+                    "http://localhost:9012/deploy/package/json?project=HWL4_X86&package=HWL4_X86-20230607-153750-v1.0.27.tar.gz";
+                url = "http://localhost:9012/deploy/projects";
+                // url = "http://localhost:9012/deploy/packages?artifacts_url=/HWL4_X86/cicd";
+                // url = "http://localhost:9012/deploy/vehicle/info?vehicle=J7A01"
+                // url = "http://localhost:9012/deploy/group/list?orderField=id&orderSeq=descend&pageSize=3&pageNo=1";
+                // url = "http://localhost:9012/deploy/task/list?orderField=id&orderSeq=descend&pageSize=10&pageNo=1";
+                // url = "http://localhost:9012/deploy/task/delete";
+                // url = "http://localhost:9012/deploy/extract";
+                // url = "http://localhost:9012/deploy/downloadPackage";
                 fetch(url, {
                     timeout: 5 * 1000
                 })
@@ -109,7 +122,7 @@
 
             const btnFile = document.getElementById("btnFile");
             btnFile.onclick = () => {
-                const url = "http://172.16.18.123/:9010/deploy/task/upgrade";
+                const url = "http://localhost:9012/deploy/task/upgrade";
                 fetch(url, {
                     method: "POST",
                     headers: {
@@ -121,8 +134,8 @@
                         creator: 1,
                         vehicles: "J7A01",
                         // ,HWL4_X86-20230609-155310-v1.0.31.tar.gz
-                        package_on_artifacts:
-                            "HWL4_X86-20230607-153750-v1.0.27.tar.gz,HWL4_X86-20230609-155310-v1.0.31.tar.gz",
+                        // package_on_artifacts:
+                            // "HWL4_X86-20230607-153750-v1.0.27.tar.gz,HWL4_X86-20230609-155310-v1.0.31.tar.gz",
                         package_on_vehicle: "HWL4_X86-20230608-110818-v1.0.28.tar.gz",
                         cur_package: "HWL4_X86-20230609-155310-v1.0.31.tar.gz"
                     }),
@@ -131,7 +144,7 @@
             };
 
             // btnFile.onclick = () => {
-            //     const url = "http://172.16.18.123:9010/deploy/task/operate";
+            //     const url = "http://localhost:9012/deploy/task/operate";
             //     fetch(url, {
             //         method: "POST",
             //         headers: {
@@ -147,7 +160,7 @@
 
             const btnDownload = document.getElementById("btnDownload");
             btnDownload.onclick = () => {
-                const url = "http://172.16.18.123:9010/deploy/downloadPackage";
+                const url = "http://localhost:9012/deploy/downloadPackage";
                 fetch(url, {
                     timeout: 5 * 1000
                 }).then(console.info);

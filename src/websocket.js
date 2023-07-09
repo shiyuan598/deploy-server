@@ -1,15 +1,5 @@
 const WebSocket = require("ws");
-const { updateVehicleInfo, getPackageList } = require("./business");
-
-// 向所有客户端发送消息
-const sendMsgToAll = (wsServer, msg) => {
-    // 发送消息给所有连接的WebSocket客户端
-    wsServer.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(msg);
-        }
-    });
-};
+const { updateVehicleInfo, getPackageList, getProjectInfo, sendMsgToAll, upgrade } = require("./business");
 
 function startWebSocketServer(server) {
     const wsServer = new WebSocket.Server({ server });
@@ -27,9 +17,9 @@ function startWebSocketServer(server) {
             try {
                 const data = JSON.parse(msg);
                 const { type, message } = data;
+                const { carName: vehicle, pageNo, pageSize } = message;
                 switch (type) {
                     case "GetPackages":
-                        const { carName: vehicle, pageNo, pageSize } = message;
                         getPackageList(vehicle, pageNo, pageSize).then((v) => {
                             console.info("getPackageList:", v);
                             sendMsgToAll(
@@ -49,22 +39,40 @@ function startWebSocketServer(server) {
                     case "CarInfo":
                         updateVehicleInfo(message);
                         break;
+                    case "Task":
+                        console.info("vehicle:", vehicle, message);
+                        getProjectInfo(vehicle).then((v) => {
+                            console.info("projectInfo:", v);
+                            // TODO: 参数格式
+                            const params = {
+                                project: v.id,
+                                project_artifacts: v.artifacts_url,
+                                creator: 1,
+                                vehicles: vehicle,
+                                package_on_artifacts: undefined,
+                                package_on_vehicle: "HWL4_X86-20230608-110818-v1.0.28.tar.gz",
+                                cur_package: "HWL4_X86-20230609-155310-v1.0.31.tar.gz"
+                            };
+                            upgrade(params, wsServer).then(console.info);
+                        });
+
+                        break;
                     default:
                         break;
                 }
             } catch (error) {}
         });
 
-        setInterval(() => {
-            ws.send(
-                JSON.stringify({
-                    type: "HeartBeat",
-                    message: {
-                        timestamp: Date.now()
-                    }
-                })
-            );
-        }, 1000 * 5);
+        // setInterval(() => {
+        //     ws.send(
+        //         JSON.stringify({
+        //             type: "HeartBeat",
+        //             message: {
+        //                 timestamp: Date.now()
+        //             }
+        //         })
+        //     );
+        // }, 1000 * 5);
     });
     // 返回WebSocket Server实例
     return wsServer;
