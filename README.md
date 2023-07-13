@@ -12,7 +12,9 @@ node app.js
 ncc build app.js -m -o dist
 ```
 需要@vercel/ncc 包
-
+```
+npm install -g @vercel/ncc
+```
 
 ### 文档
 
