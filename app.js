@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const { startWebSocketServer } = require("./src/websocket");
+const { runScheduleTask } = require("./src/schedule");
 const { PORT } = require("./config");
 
 const app = express();
@@ -36,3 +37,6 @@ const wsServer = startWebSocketServer(server);
 
 // 将 WebSocket 实例保存在 Express 应用程序中
 app.set("wsServer", wsServer);
+
+// 开启定时任务
+// runScheduleTask();

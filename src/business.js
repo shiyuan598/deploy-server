@@ -120,6 +120,7 @@ const upgrade = async (params, wsServer) => {
         const vehicleArr = vehicles.split(",");
         const packageOnArtifactsArr = package_on_artifacts?.split(",");
         const packageOnVehicleArr = package_on_vehicle?.split(",");
+        console.info(packageOnArtifactsArr, packageOnArtifactsArr.length);
         const allPromises = [];
         vehicleArr.forEach((vehicle) => {
             const promises1 = !packageOnArtifactsArr ? [] : packageOnArtifactsArr.map(async (packageName) => {
@@ -260,17 +261,31 @@ const upgrade = async (params, wsServer) => {
                 reject(error);
             });
         });
-
-        
     } catch (error) {
         return Promise.reject(error);
     }
 };
+
+// 清理过期的下载记录及文件
+const removeExpiredDownloads = async (date) => {
+    // 放入事务里面
+    sqlUtil.executeTransaction(async (connection) => {
+        let sql = `SELECT package, file_dir FROM deploy_download_task WHERE update_time < ?`;
+        
+        let params = [date];
+        const [rows] = await connection.execute(sql, params);
+        console.info(rows);
+        rows.forEach(item => {
+
+        })
+    });
+}
 
 module.exports = {
     updateVehicleInfo,
     getPackageList,
     getProjectInfo,
     upgrade,
-    sendMsgToAll
+    sendMsgToAll,
+    removeExpiredDownloads
 };

@@ -109,7 +109,7 @@ router.get("/vehicle/info", (request, response) => {
 // 查询任务组
 router.get("/group/list", async (request, response) => {
     try {
-        const { pageNo = 1, pageSize = 10, name = "", orderField = "id", orderSeq = "descend" } = request.query;
+        const { pageNo = 1, pageSize = 10, name = "", order:orderField = "id", seq:orderSeq = "descend" } = request.query;
         const num = parseInt(pageNo);
         const size = parseInt(pageSize);
         const sql = `
@@ -127,7 +127,7 @@ router.get("/group/list", async (request, response) => {
         const finishedState = 4;
         const params = [finishedState, `%${name}%`, `%${name}%`, `${name}%`, finishedState];
         const queryTotal = await sqlUtil.execute(sql, params);
-        const total = queryTotal[0].total;
+        const total = queryTotal[0]?.total;
         if (!total) {
             fullFilled(response, [], { current: num, pageSize: size, total });
         } else {
@@ -168,12 +168,12 @@ router.get("/task/list", async (request, response) => {
         const {
             pageNo = 1,
             pageSize = 10,
-            group_id = "",
+            group = "",
             vehicle = "",
-            project_id = "",
+            project = "",
             name = "",
-            orderField = "id",
-            orderSeq = "descend"
+            order:orderField = "id",
+            seq:orderSeq = "descend"
         } = request.query;
         const num = parseInt(pageNo);
         const size = parseInt(pageSize);
@@ -194,9 +194,9 @@ router.get("/task/list", async (request, response) => {
                         task_state.name LIKE ? OR
                         task.create_time LIKE ?
                     )
-                ${group_id ? "AND task.group = ?" : ""}
+                ${group ? "AND task.group = ?" : ""}
                 ${vehicle ? "AND task.vehicle = ?" : ""}
-                ${project_id ? "AND sub_g.project = ?" : ""}
+                ${project ? "AND sub_g.project = ?" : ""}
             `;
             if (order) {
                 const { field, seq } = order;
@@ -211,14 +211,14 @@ router.get("/task/list", async (request, response) => {
                 }
             }
             const params = [`%${name}%`, `%${name}%`, `%${name}%`, `%${name}%`, `${name}%`];
-            if (group_id) {
-                params.push(group_id);
+            if (group) {
+                params.push(group);
             }
             if (vehicle) {
                 params.push(vehicle);
             }
-            if (project_id) {
-                params.push(project_id);
+            if (project) {
+                params.push(project);
             }
             return {
                 sql,
@@ -228,7 +228,7 @@ router.get("/task/list", async (request, response) => {
         const fields = "COUNT(task.id) AS total";
         const { sql, params } = getSqlAndParams(fields);
         const queryTotal = await sqlUtil.execute(sql, params);
-        const total = queryTotal[0].total;
+        const total = queryTotal[0]?.total;
         if (!total) {
             fullFilled(response, [], { current: num, pageSize: size, total });
         } else {

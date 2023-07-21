@@ -1,4 +1,4 @@
-const PORT = 9012;
+const PORT = 9011;
 
 const database = {
     host: "localhost",
@@ -14,8 +14,8 @@ const artifacts = {
     API_KEY: "AKCp8nzqQaRKVZGfYHimkQh9FK3FHq2mkaaRtgJZhjaeYL71aUXU3RTJbFBjNTT9CqNoMTdru",
     BASE_URL: "https://artifactory.zhito.com/artifactory",
     BUILD_JSON:"zhito-ai-module/",
-    DOWNLOAD_DIR: "/home/download/",
-    EXTRACT_DIR: "/home/extract/"
+    DOWNLOAD_DIR: "/home/wangshiyuan/code/00deploy/download/",
+    EXTRACT_DIR: "/home/wangshiyuan/code/00deploy/extract/"
 }
 
 module.exports = {
