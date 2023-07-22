@@ -14,7 +14,6 @@ const sendMsgToAll = (wsServer, msg) => {
 
 const updateVehicleInfo = async (info) => {
     try {
-        console.info("更新车辆信息");
         // 更新车辆信息
         const { carName: vehicle, version, timestamp, lonlat, currentPackage, localPackageList, taskInfo } = info;
         let params = [version, timestamp, lonlat[0], lonlat[1], currentPackage, localPackageList.join(","), vehicle];
@@ -47,10 +46,8 @@ const updateVehicleInfo = async (info) => {
                     break;
             }
             params = [state, desc, taskId];
-            console.info(params);
             sql = `UPDATE deploy_upgrade_task SET state = ?, \`desc\` = ? WHERE deploy_upgrade_task.id = ?`;
             const result = await sqlUtil.execute(sql, params);
-            console.info(result);
         }
     } catch (error) {
         console.info("updateVehicleInfo错误：", error);
@@ -117,10 +114,9 @@ const upgrade = async (params, wsServer) => {
             const groupId = result.insertId;
             console.info("创建升级任务组:", result.insertId);
             // 创建升级任务
-        const vehicleArr = vehicles.split(",");
-        const packageOnArtifactsArr = package_on_artifacts?.split(",");
-        const packageOnVehicleArr = package_on_vehicle?.split(",");
-        console.info(packageOnArtifactsArr, packageOnArtifactsArr.length);
+        const vehicleArr = vehicles ? vehicles.split(",") : [];
+        const packageOnArtifactsArr = package_on_artifacts ? package_on_artifacts.split(",") : [];
+        const packageOnVehicleArr = package_on_vehicle ? package_on_vehicle.split(",") : [];
         const allPromises = [];
         vehicleArr.forEach((vehicle) => {
             const promises1 = !packageOnArtifactsArr ? [] : packageOnArtifactsArr.map(async (packageName) => {

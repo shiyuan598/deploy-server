@@ -21,7 +21,6 @@ function startWebSocketServer(server) {
                 switch (type) {
                     case "GetPackages":
                         getPackageList(vehicle, pageNo, pageSize).then((v) => {
-                            console.info("getPackageList:", v);
                             sendMsgToAll(
                                 wsServer,
                                 JSON.stringify({

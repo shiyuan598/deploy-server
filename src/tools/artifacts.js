@@ -39,9 +39,7 @@ const getAllFiles = (path) => {
 // 下载包对应的json描述文件
 const findJsonByName = (project, name) => {
     const jsonName = name.replace(project, "build_list").replace(".tar.gz", ".json");
-    console.info(jsonName);
     const url = util.joinPaths(BASE_URL, BUILD_JSON, project, jsonName);
-    console.info(url);
     return new Promise((resolve, reject) => {
         axios
             .get(url, {
@@ -53,7 +51,6 @@ const findJsonByName = (project, name) => {
             })
             .then((response) => {
                 data = response.data;
-                console.info(data);
                 resolve(data);
             })
             .catch((error) => {
@@ -134,7 +131,6 @@ const extractFile = (filePath, extractDir) => {
                 },
                 function (err) {
                     if (err) {
-                        console.log(err);
                         reject(err);
                     } else {
                         resolve("ok");
