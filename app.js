@@ -39,4 +39,4 @@ const wsServer = startWebSocketServer(server);
 app.set("wsServer", wsServer);
 
 // 开启定时任务
-// runScheduleTask();
+runScheduleTask();

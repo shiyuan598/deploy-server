@@ -1,6 +1,9 @@
 const WebSocket = require("ws");
 const sqlUtil = require("./tools/sqlUtil");
+const { deleteFileAsync } = require("./tools/util");
 const artifacts = require("./tools/artifacts");
+const config = require("../config");
+const { DOWNLOAD_DIR, EXTRACT_DIR } = config.artifacts;
 
 // 向所有客户端发送消息
 const sendMsgToAll = (wsServer, msg) => {
@@ -114,148 +117,152 @@ const upgrade = async (params, wsServer) => {
             const groupId = result.insertId;
             console.info("创建升级任务组:", result.insertId);
             // 创建升级任务
-        const vehicleArr = vehicles ? vehicles.split(",") : [];
-        const packageOnArtifactsArr = package_on_artifacts ? package_on_artifacts.split(",") : [];
-        const packageOnVehicleArr = package_on_vehicle ? package_on_vehicle.split(",") : [];
-        const allPromises = [];
-        vehicleArr.forEach((vehicle) => {
-            const promises1 = !packageOnArtifactsArr ? [] : packageOnArtifactsArr.map(async (packageName) => {
-                const isCur = cur_package === packageName ? 1 : 0;
-                // 创建升级任务
-                const result = await sqlUtil.execute(
-                    "INSERT INTO deploy_upgrade_task (`group`, vehicle, package, package_type, set_current) VALUES (?, ?, ?, ?, ?)",
-                    [groupId, vehicle, packageName, 0, isCur]
-                );
-                const taskId = result.insertId;
-                // 下载文件 解压文件
-                sqlUtil.executeTransaction(async (connection) => {
-                    let params = [packageName];
-                    // 1.查询是否已经下载过该包
-                    let sql = `SELECT state, file_dir FROM deploy_download_task WHERE package = ? AND state != 2 ORDER BY id DESC LIMIT 1`;
-                    const [rows] = await connection.execute(sql, params);
-                    console.info("查询下载任务：", rows);
-                    if (rows.length) {
-                        if (rows[0].state == 1) {
-                            console.info("已经下载好了，立马可用...");
-                            sendMsgToAll(
-                                wsServer,
-                                JSON.stringify({
-                                    type: "Task",
-                                    message: {
-                                        taskId: taskId,
-                                        carName: vehicle,
-                                        package: packageName,
-                                        package_type: 0,
-                                        storagePath: rows[0].file_dir,
-                                        set_current: isCur,
-                                        action: "START"
-                                    }
-                                })
-                            );
-                        } else {
-                            // 已经有相同任务了，稍等即可
-                            console.info("已经有相同任务了，稍等即可...");
-                        }
-                    } else {
-                        console.info("创建下载任务，并开始下载", packageName);
-                        // 创建下载任务
-                        sql = `INSERT INTO deploy_download_task (package) VALUES (?)`;
-                        params = [packageName];
-                        await connection.execute(sql, params);
+            const vehicleArr = vehicles ? vehicles.split(",") : [];
+            const packageOnArtifactsArr = package_on_artifacts ? package_on_artifacts.split(",") : [];
+            const packageOnVehicleArr = package_on_vehicle ? package_on_vehicle.split(",") : [];
+            const allPromises = [];
+            vehicleArr.forEach((vehicle) => {
+                const promises1 = !packageOnArtifactsArr
+                    ? []
+                    : packageOnArtifactsArr.map(async (packageName) => {
+                          const isCur = cur_package === packageName ? 1 : 0;
+                          // 创建升级任务
+                          const result = await sqlUtil.execute(
+                              "INSERT INTO deploy_upgrade_task (`group`, vehicle, package, package_type, set_current) VALUES (?, ?, ?, ?, ?)",
+                              [groupId, vehicle, packageName, 0, isCur]
+                          );
+                          const taskId = result.insertId;
+                          // 下载文件 解压文件
+                          sqlUtil.executeTransaction(async (connection) => {
+                              let params = [packageName];
+                              // 1.查询是否已经下载过该包
+                              let sql = `SELECT state, file_dir FROM deploy_download_task WHERE package = ? AND state != 2 ORDER BY id DESC LIMIT 1`;
+                              const [rows] = await connection.execute(sql, params);
+                              console.info("查询下载任务：", rows);
+                              if (rows.length) {
+                                  if (rows[0].state == 1) {
+                                      console.info("已经下载好了，立马可用...");
+                                      sendMsgToAll(
+                                          wsServer,
+                                          JSON.stringify({
+                                              type: "Task",
+                                              message: {
+                                                  taskId: taskId,
+                                                  carName: vehicle,
+                                                  package: packageName,
+                                                  package_type: 0,
+                                                  storagePath: rows[0].file_dir,
+                                                  set_current: isCur,
+                                                  action: "START"
+                                              }
+                                          })
+                                      );
+                                  } else {
+                                      // 已经有相同任务了，稍等即可
+                                      console.info("已经有相同任务了，稍等即可...");
+                                  }
+                              } else {
+                                  console.info("创建下载任务，并开始下载", packageName);
+                                  // 创建下载任务
+                                  sql = `INSERT INTO deploy_download_task (package) VALUES (?)`;
+                                  params = [packageName];
+                                  await connection.execute(sql, params);
 
-                        artifacts.downloadPackage(project_artifacts, packageName).then(
-                            async (path) => {
-                                console.info("下载成功后的处理", packageName);
+                                  artifacts.downloadPackage(project_artifacts, packageName).then(
+                                      async (path) => {
+                                          console.info("下载成功后的处理", packageName);
 
-                                // 放入事务里面
-                                sqlUtil.executeTransaction(async (connection) => {
-                                    // 修改下载任务的状态及文件存放地址
-                                    console.info("更新下载状态", packageName);
-                                    let params = [1, path, packageName];
-                                    let sql = `UPDATE deploy_download_task SET state = ?, file_dir = ? WHERE package = ?`;
-                                    await connection.execute(sql, params);
-                                    // 修改升级任务的状态,先查出来需要更新的任务id
-                                    sql = `SELECT id FROM deploy_upgrade_task WHERE package = ? AND state = 0 AND package_type = 0`;
-                                    params = [packageName];
-                                    const [rows] = await connection.execute(sql, params);
-                                    console.info("更新任务状态", packageName);
-                                    sql = `UPDATE deploy_upgrade_task set state = ?, file_dir = ? WHERE package = ? AND state = 0 AND package_type = 0`;
-                                    params = [1, path, packageName];
-                                    await connection.execute(sql, params);
-                                    console.info("通知车端：升级远程版本", packageName);
-                                    rows.forEach((id) => {
-                                        sendMsgToAll(
-                                            wsServer,
-                                            JSON.stringify({
-                                                type: "Task",
-                                                message: {
-                                                    taskId: id,
-                                                    carName: vehicle,
-                                                    package: packageName,
-                                                    package_type: 0,
-                                                    storagePath: path,
-                                                    set_current: isCur,
-                                                    action: "START"
-                                                }
-                                            })
-                                        );
-                                    });
-                                });
-                            },
-                            (error) => {
-                                console.info("下载失败后的处理", packageName);
-                                // 修改下载任务的状态
-                                let params = [2, packageName];
-                                let sql = `UPDATE deploy_download_task SET state = ? WHERE package = ?`;
-                                connection.execute(sql, params);
-                                // 修改升级任务的状态
-                                sql = `UPDATE deploy_upgrade_task set state = ? WHERE package = ? AND state = 0 AND package_type = 0`;
-                                params = [5, packageName];
-                                connection.execute(sql, params);
-                            }
-                        );
-                    }
-                });
+                                          // 放入事务里面
+                                          sqlUtil.executeTransaction(async (connection) => {
+                                              // 修改下载任务的状态及文件存放地址
+                                              console.info("更新下载状态", packageName);
+                                              let params = [1, path, packageName];
+                                              let sql = `UPDATE deploy_download_task SET state = ?, file_dir = ? WHERE package = ?`;
+                                              await connection.execute(sql, params);
+                                              // 修改升级任务的状态,先查出来需要更新的任务id
+                                              sql = `SELECT id FROM deploy_upgrade_task WHERE package = ? AND state = 0 AND package_type = 0`;
+                                              params = [packageName];
+                                              const [rows] = await connection.execute(sql, params);
+                                              console.info("更新任务状态", packageName);
+                                              sql = `UPDATE deploy_upgrade_task set state = ?, file_dir = ? WHERE package = ? AND state = 0 AND package_type = 0`;
+                                              params = [1, path, packageName];
+                                              await connection.execute(sql, params);
+                                              console.info("通知车端：升级远程版本", packageName);
+                                              rows.forEach((id) => {
+                                                  sendMsgToAll(
+                                                      wsServer,
+                                                      JSON.stringify({
+                                                          type: "Task",
+                                                          message: {
+                                                              taskId: id,
+                                                              carName: vehicle,
+                                                              package: packageName,
+                                                              package_type: 0,
+                                                              storagePath: path,
+                                                              set_current: isCur,
+                                                              action: "START"
+                                                          }
+                                                      })
+                                                  );
+                                              });
+                                          });
+                                      },
+                                      (error) => {
+                                          console.info("下载失败后的处理", packageName);
+                                          // 修改下载任务的状态
+                                          let params = [2, packageName];
+                                          let sql = `UPDATE deploy_download_task SET state = ? WHERE package = ?`;
+                                          connection.execute(sql, params);
+                                          // 修改升级任务的状态
+                                          sql = `UPDATE deploy_upgrade_task set state = ? WHERE package = ? AND state = 0 AND package_type = 0`;
+                                          params = [5, packageName];
+                                          connection.execute(sql, params);
+                                      }
+                                  );
+                              }
+                          });
+                      });
+                // 升级车端版本时不需要下载
+                const promises2 = !packageOnVehicleArr
+                    ? []
+                    : packageOnVehicleArr.map(async (packageName) => {
+                          const isCur = cur_package === packageName ? 1 : 0;
+                          // 创建升级任务
+                          const result = await sqlUtil.execute(
+                              "INSERT INTO deploy_upgrade_task (`group`, vehicle, package, package_type, set_current, state) VALUES (?, ?, ?, ?, ?, 1)",
+                              [groupId, vehicle, packageName, 1, isCur]
+                          );
+                          console.info("通知车端：升级车端版本", packageName);
+                          const taskId = result.insertId;
+                          sendMsgToAll(
+                              wsServer,
+                              JSON.stringify({
+                                  type: "Task",
+                                  message: {
+                                      taskId: taskId,
+                                      carName: vehicle,
+                                      package: packageName,
+                                      package_type: 1,
+                                      set_current: isCur,
+                                      action: "START"
+                                  }
+                              })
+                          );
+                      });
+                allPromises.push(...promises1, ...promises2);
             });
-            // 升级车端版本时不需要下载
-            const promises2 = !packageOnVehicleArr ? [] : packageOnVehicleArr.map(async (packageName) => {
-                const isCur = cur_package === packageName ? 1 : 0;
-                // 创建升级任务
-                const result = await sqlUtil.execute(
-                    "INSERT INTO deploy_upgrade_task (`group`, vehicle, package, package_type, set_current, state) VALUES (?, ?, ?, ?, ?, 1)",
-                    [groupId, vehicle, packageName, 1, isCur]
-                );
-                console.info("通知车端：升级车端版本", packageName);
-                const taskId = result.insertId;
-                sendMsgToAll(
-                    wsServer,
-                    JSON.stringify({
-                        type: "Task",
-                        message: {
-                            taskId: taskId,
-                            carName: vehicle,
-                            package: packageName,
-                            package_type: 1,
-                            set_current: isCur,
-                            action: "START"
-                        }
-                    })
-                );
-            });
-            allPromises.push(...promises1, ...promises2);
-        });
-        Promise.all(allPromises)
-            .then(() => {
-                console.info("******* Done all! ******");
-                resolve({
-                    code: 0,
-                    data: result,
-                    msg: "成功"
+            Promise.all(allPromises)
+                .then(() => {
+                    console.info("******* Done all! ******");
+                    resolve({
+                        code: 0,
+                        data: result,
+                        msg: "成功"
+                    });
                 })
-            })
-            .catch((error) => {
-                reject(error);
-            });
+                .catch((error) => {
+                    reject(error);
+                });
         });
     } catch (error) {
         return Promise.reject(error);
@@ -264,18 +271,26 @@ const upgrade = async (params, wsServer) => {
 
 // 清理过期的下载记录及文件
 const removeExpiredDownloads = async (date) => {
+    console.info("date filter: ", date);
     // 放入事务里面
     sqlUtil.executeTransaction(async (connection) => {
-        let sql = `SELECT package, file_dir FROM deploy_download_task WHERE update_time < ?`;
-        
-        let params = [date];
+        let sql = `SELECT id, CONCAT(?, package) AS package_dir, file_dir FROM deploy_download_task WHERE update_time < ?`;
+
+        let params = [DOWNLOAD_DIR, date];
         const [rows] = await connection.execute(sql, params);
         console.info(rows);
-        rows.forEach(item => {
-
-        })
+        rows.forEach((item) => {
+            const { id, package_dir, file_dir } = item;
+            console.info(id, package_dir, file_dir);
+            sql = `DELETE FROM deploy_download_task WHERE id = ?`;
+            params = [id];
+            connection.execute(sql, params);
+            Promise.all([deleteFileAsync(package_dir), deleteFileAsync(file_dir)]).then((r) => {
+                console.info(r, "删除干净")
+            })
+        });
     });
-}
+};
 
 module.exports = {
     updateVehicleInfo,

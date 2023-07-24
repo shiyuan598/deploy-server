@@ -79,6 +79,8 @@ const downloadPackage = (projectArtifacts, packageName) => {
                 // 保存文件
                 const fileDir = `${DOWNLOAD_DIR}${packageName}`;
                 const extractDir = `${EXTRACT_DIR}${packageName.replace(".tar.gz", "")}`;
+                
+                console.info("下载完成！");
                 const writeRes = await writeFile(data, fileDir);
                 if (writeRes === "ok") {
                     const extractRes = await extractFile(fileDir, extractDir);
@@ -103,19 +105,38 @@ const downloadPackage = (projectArtifacts, packageName) => {
 
 // 写文件
 const writeFile = (data, path) => {
-    try {
-        return new Promise((resolve, reject) => {
-            fs.writeFile(path, data, (error) => {
-                if (error) {
-                    reject(error);
-                }
-                resolve("ok");
-            });
-        });
-    } catch (error) {
-        throw error;
-    }
-};
+    return new Promise((resolve, reject) => {
+      const writeStream = fs.createWriteStream(path);
+  
+      writeStream.on('error', (error) => {
+        console.info('writeFile error:', error);
+        reject(error);
+      });
+  
+      writeStream.on('finish', () => {
+        console.log('文件写入成功！');
+        resolve('ok');
+      });
+  
+      // 将数据逐块写入文件
+      const chunkSize = 1024 * 16; // 设置每次写入的块大小（字节）
+      let offset = 0;
+  
+      const writeNextChunk = () => {
+        if (offset >= data.length) {
+          writeStream.end(); // 写入完成后结束写入流
+          return;
+        }
+  
+        const chunk = data.slice(offset, offset + chunkSize);
+        offset += chunkSize;
+  
+        writeStream.write(chunk, 'utf8', writeNextChunk);
+      };
+  
+      writeNextChunk();
+    });
+  };
 
 // 解压包
 const extractFile = (filePath, extractDir) => {
